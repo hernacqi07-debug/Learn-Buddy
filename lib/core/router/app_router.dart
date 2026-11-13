@@ -1,0 +1,105 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../features/auth/presentation/login_page.dart';
+import '../../features/auth/presentation/register_page.dart';
+import '../../features/settings/presentation/settings_page.dart';
+import '../../features/student/home/student_home_page.dart';
+import '../../features/student/teach/chat_page.dart';
+import '../../features/student/teach/recap_page.dart';
+import '../../features/teacher/content/teacher_content_page.dart';
+import '../../features/teacher/dashboard/teacher_dashboard_page.dart';
+import '../../features/teacher/dashboard/teacher_student_detail_page.dart';
+import '../models/models.dart';
+import '../providers/app_providers.dart';
+
+class _RouterRefreshNotifier extends ChangeNotifier {
+  _RouterRefreshNotifier(Ref ref) {
+    ref.listen<AsyncValue<UserProfile?>>(
+      currentProfileProvider,
+      (_, _) => notifyListeners(),
+    );
+  }
+}
+
+final appRouterProvider = Provider<GoRouter>((ref) {
+  final refreshListenable = _RouterRefreshNotifier(ref);
+  ref.onDispose(refreshListenable.dispose);
+
+  return GoRouter(
+    initialLocation: '/login',
+    refreshListenable: refreshListenable,
+    redirect: (context, state) {
+      final profileAsync = ref.read(currentProfileProvider);
+      if (profileAsync.isLoading) return null;
+
+      final profile = profileAsync.value;
+      final path = state.matchedLocation;
+      final isAuthRoute = path == '/login' || path == '/register';
+
+      if (profile == null) {
+        return isAuthRoute ? null : '/login';
+      }
+
+      final homeRoute =
+          profile.role == UserRole.teacher ? '/teacher' : '/student';
+
+      if (isAuthRoute) {
+        return homeRoute;
+      }
+
+      if (profile.role == UserRole.student && path.startsWith('/teacher')) {
+        return '/student';
+      }
+      if (profile.role == UserRole.teacher && path.startsWith('/student')) {
+        return '/teacher';
+      }
+
+      return null;
+    },
+    routes: [
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterPage(),
+      ),
+      GoRoute(
+        path: '/student',
+        builder: (context, state) => const StudentHomePage(),
+      ),
+      GoRoute(
+        path: '/student/teach/:sessionId',
+        builder: (context, state) => ChatPage(
+          sessionId: state.pathParameters['sessionId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/student/recap/:sessionId',
+        builder: (context, state) => RecapPage(
+          sessionId: state.pathParameters['sessionId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/teacher',
+        builder: (context, state) => const TeacherDashboardPage(),
+      ),
+      GoRoute(
+        path: '/teacher/content',
+        builder: (context, state) => const TeacherContentPage(),
+      ),
+      GoRoute(
+        path: '/teacher/student/:studentId',
+        builder: (context, state) => TeacherStudentDetailPage(
+          studentId: state.pathParameters['studentId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsPage(),
+      ),
+    ],
+  );
+});

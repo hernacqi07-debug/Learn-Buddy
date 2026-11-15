@@ -23,6 +23,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
   UserRole _role = UserRole.student;
   bool _isLoading = false;
+  bool _isSuccess = false;
   bool _obscure = true;
   String? _error;
 
@@ -39,6 +40,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _isLoading = true;
+      _isSuccess = false;
       _error = null;
     });
 
@@ -52,21 +54,69 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             inviteCode: _role == UserRole.teacher ? _inviteCtrl.text : null,
             languagePref: lang,
           );
-      await ref.read(currentProfileProvider.notifier).refresh();
+
+      if (mounted) {
+        setState(() => _isSuccess = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.celebration_rounded, color: Colors.white),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Akun berhasil dibuat! Selamat datang, ${_nameCtrl.text.trim()} 🎉',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      final profile = await ref.read(currentProfileProvider.notifier).refresh();
+
+      if (mounted && profile != null) {
+        final destination =
+            profile.role == UserRole.teacher ? '/teacher' : '/student';
+        context.go(destination);
+      }
     } on PostgrestException catch (e) {
       if (mounted) {
         setState(() {
+          _isLoading = false;
+          _isSuccess = false;
           _error = e.message.contains('INVALID_INVITE_CODE')
               ? context.l10n.inviteCodeInvalid
               : e.message;
         });
       }
     } on AuthException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isSuccess = false;
+          final msg = e.message.toLowerCase();
+          if (msg.contains('already registered') ||
+              msg.contains('already in use')) {
+            _error = 'Email ini sudah terdaftar. Silakan login langsung.';
+          } else {
+            _error = e.message;
+          }
+        });
+      }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isSuccess = false;
+          _error = e.toString();
+        });
+      }
     }
   }
 
@@ -202,17 +252,43 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     ],
                     const SizedBox(height: 20),
                     ElevatedButton(
-                      onPressed: _isLoading ? null : _submit,
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.2,
-                                color: Colors.white,
-                              ),
+                      onPressed: (_isLoading || _isSuccess) ? null : _submit,
+                      style: _isSuccess
+                          ? ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              foregroundColor: Colors.white,
                             )
-                          : Text(l10n.registerButton),
+                          : null,
+                      child: _isSuccess
+                          ? const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.check_rounded,
+                                    color: Colors.white, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Pendaftaran Berhasil!',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                              ],
+                            )
+                          : _isLoading
+                              ? const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.2,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    SizedBox(width: 10),
+                                    Text('Mendaftarkan akun...'),
+                                  ],
+                                )
+                              : Text(l10n.registerButton),
                     ),
                     const SizedBox(height: 12),
                     TextButton(

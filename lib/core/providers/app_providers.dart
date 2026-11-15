@@ -92,8 +92,9 @@ class CurrentProfileNotifier extends AsyncNotifier<UserProfile?> {
     return profile;
   }
 
-  Future<void> refresh() async {
+  Future<UserProfile?> refresh() async {
     ref.invalidateSelf();
+    return future;
   }
 }
 

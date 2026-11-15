@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/l10n/l10n_ext.dart';
+import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/buddy_avatar.dart';
@@ -19,6 +20,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _isLoading = false;
+  bool _isSuccess = false;
   bool _obscure = true;
   String? _error;
 
@@ -33,6 +35,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _isLoading = true;
+      _isSuccess = false;
       _error = null;
     });
 
@@ -41,17 +44,61 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             email: _emailCtrl.text,
             password: _passwordCtrl.text,
           );
-      await ref.read(currentProfileProvider.notifier).refresh();
+
+      if (mounted) {
+        setState(() => _isSuccess = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Login berhasil! Mempersiapkan ruang belajar...',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Color(0xFF10B981),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      final profile = await ref.read(currentProfileProvider.notifier).refresh();
+
+      if (mounted && profile != null) {
+        final destination =
+            profile.role == UserRole.teacher ? '/teacher' : '/student';
+        context.go(destination);
+      }
     } on AuthException catch (e) {
       if (mounted) {
-        setState(() => _error = e.message);
+        setState(() {
+          _isLoading = false;
+          _isSuccess = false;
+          final msg = e.message.toLowerCase();
+          if (msg.contains('invalid login credentials') ||
+              msg.contains('invalid credentials')) {
+            _error = 'Email atau kata sandi tidak cocok. Silakan periksa kembali.';
+          } else if (msg.contains('email not confirmed')) {
+            _error = 'Email akun Anda belum dikonfirmasi.';
+          } else {
+            _error = e.message;
+          }
+        });
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _error = context.l10n.authErrorGeneric);
+        setState(() {
+          _isLoading = false;
+          _isSuccess = false;
+          _error = context.l10n.authErrorGeneric;
+        });
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -171,17 +218,43 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ],
                     const SizedBox(height: 20),
                     ElevatedButton(
-                      onPressed: _isLoading ? null : _submit,
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.2,
-                                color: Colors.white,
-                              ),
+                      onPressed: (_isLoading || _isSuccess) ? null : _submit,
+                      style: _isSuccess
+                          ? ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              foregroundColor: Colors.white,
                             )
-                          : Text(l10n.loginButton),
+                          : null,
+                      child: _isSuccess
+                          ? const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.check_rounded,
+                                    color: Colors.white, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Login Berhasil!',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                              ],
+                            )
+                          : _isLoading
+                              ? const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.2,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    SizedBox(width: 10),
+                                    Text('Memverifikasi akun...'),
+                                  ],
+                                )
+                              : Text(l10n.loginButton),
                     ),
                     const SizedBox(height: 12),
                     TextButton(

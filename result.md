@@ -69,14 +69,16 @@
 
 Jalankan dengan `--dart-define` agar URL dan publishable key Supabase tidak di-hardcode di kode Dart:
 
+> **Jangan pernah menulis nilai asli URL dan publishable key di file ini.** Isi `$env:SUPABASE_URL` dan `$env:SUPABASE_ANON_KEY` dari environment / dashboard Supabase di mesin masing-masing (19 Nov 2026: nilai asli dihapus dari dokumen ini karena sempat ter-commit).
+
 ```powershell
-flutter run --dart-define=SUPABASE_URL=https://reoqmeygowfqubicsywl.supabase.co --dart-define=SUPABASE_ANON_KEY=sb_publishable_dRAQZBoYKC8PaItmsEEcxw_bjKuMes0
+flutter run --dart-define=SUPABASE_URL=$env:SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$env:SUPABASE_ANON_KEY
 ```
 
 Atau untuk compile APK release:
 
 ```powershell
-flutter build apk --release --dart-define=SUPABASE_URL=https://reoqmeygowfqubicsywl.supabase.co --dart-define=SUPABASE_ANON_KEY=sb_publishable_dRAQZBoYKC8PaItmsEEcxw_bjKuMes0
+flutter build apk --release --dart-define=SUPABASE_URL=$env:SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$env:SUPABASE_ANON_KEY
 ```
 
 ---
@@ -84,9 +86,9 @@ flutter build apk --release --dart-define=SUPABASE_URL=https://reoqmeygowfqubics
 ## 4. Langkah Lanjutan (Manual / Uji Lapangan)
 
 1. **Install & Tes di Vivo X300 Pro:** pasang `build\app\outputs\flutter-apk\app-release.apk`, daftar 1 akun **Siswa** dan 1 akun **Guru** (Confirm email sudah dimatikan), lalu uji alur chat Stack (ID & EN) serta tombol *Terjemahkan ke English* di topik Linked List.
-2. **Uji Kualitas AI (Sebelum & Sesudah 17 Nov):**
-   - Uji **20 sampel Evaluator** (target akurasi ≥ 80%) dan **10 skenario anti-bocor** (target 0 kebocoran) menggunakan Gemini (`gemini-2.5-flash`).
-   - Pada **17 Nov 2026**, ganti 4 Secrets di dashboard Supabase (`LLM_PROVIDER=deepseek`, `LLM_API_KEY=<key DeepSeek>`, `LLM_MODEL=deepseek-chat`, `LLM_BASE_URL=https://api.deepseek.com/v1/chat/completions`) lalu ulangi uji 20 sampel & 10 skenario — **tanpa perlu build ulang APK**.
-3. **Kode Undangan Guru (Minggu ke-2):** sebelum aplikasi dipakai guru sebenarnya, tambahkan 1 baris kode rahasia ke tabel `teacher_invite_codes` (`is_active = true`) lewat Supabase Table Editor.
+2. **Uji Kualitas AI (di Gemini):**
+   - Uji **20 sampel Evaluator** (target akurasi ≥ 80%) dan **10 skenario anti-bocor** (target 0 kebocoran) menggunakan Gemini (`gemini-3.5-flash-lite`, model yang live saat ini).
+   - **Pindah ke DeepSeek DITUNDA (keputusan Rid, 19 Nov 2026)** karena respons DeepSeek terasa lambat; Learn Buddy tetap di Gemini untuk sekarang. Bila suatu saat pindah, ganti secret di dashboard Supabase saja — **tanpa perlu build ulang APK**.
+3. **Kode Undangan Guru — SUDAH ADA (19 Nov 2026):** live DB sudah berisi 1 kode aktif (dibuat 17 Nov). **Jangan tambah kode baru** tanpa mengecek `teacher_invite_codes` dulu.
 4. **Uji Coba & Manual Book:** uji ke 4 teman/dosen, ambil screenshot dari aplikasi nyata + data metrik dari `turn_logs`, lalu susun Manual Book (Teori, Flowchart, Screenshot, Hasil Uji).
 5. **Stretch (Opsional):** AR Level 2 dikerjakan terpisah setelah inti MVP dan Manual Book beres.

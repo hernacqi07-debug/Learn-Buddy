@@ -277,7 +277,6 @@ class TeacherCriterion {
     required this.misconceptionId,
     required this.criterionText,
     this.criterionTextEn,
-    required this.weight,
     required this.sortOrder,
   });
 
@@ -285,7 +284,6 @@ class TeacherCriterion {
   final String misconceptionId;
   final String criterionText;
   final String? criterionTextEn;
-  final int weight;
   final int sortOrder;
 
   factory TeacherCriterion.fromMap(Map<String, dynamic> map) {
@@ -294,7 +292,6 @@ class TeacherCriterion {
       misconceptionId: map['misconception_id'] as String,
       criterionText: (map['criterion_text'] as String?) ?? '',
       criterionTextEn: map['criterion_text_en'] as String?,
-      weight: (map['weight'] as num?)?.toInt() ?? 1,
       sortOrder: (map['sort_order'] as num?)?.toInt() ?? 1,
     );
   }

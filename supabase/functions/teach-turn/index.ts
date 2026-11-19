@@ -11,7 +11,6 @@ interface CriterionRow {
   id: string;
   criterion_text: string;
   criterion_text_en: string | null;
-  weight: number;
   sort_order: number;
 }
 
@@ -241,7 +240,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: allTopicCriteria } = await admin
       .from("criteria")
-      .select("id, misconception_id, criterion_text, criterion_text_en, weight, sort_order")
+      .select("id, misconception_id, criterion_text, criterion_text_en, sort_order")
       .in(
         "misconception_id",
         miscList.map((m) => m.id),

@@ -66,18 +66,18 @@ begin
   )
   on conflict (id) do nothing;
 
-  insert into public.criteria (id, misconception_id, criterion_text, criterion_text_en, weight, sort_order) values
-  ('11111111-1111-4111-8111-111111111301', v_s1_id, 'Menyebut LIFO atau menjelaskan terakhir masuk pertama keluar', 'Mentions LIFO or explains last in, first out', 1, 1),
-  ('11111111-1111-4111-8111-111111111302', v_s1_id, 'Memberi contoh nyata yang tepat seperti tumpukan piring, buku, atau Undo', 'Gives an accurate real-world example like stacked plates, books, or Undo', 1, 2),
-  ('11111111-1111-4111-8111-111111111303', v_s1_id, 'Menjelaskan operasi push (menaruh di atas) dan pop (mengambil dari atas)', 'Explains push (adding to the top) and pop (removing from the top)', 1, 3),
+  insert into public.criteria (id, misconception_id, criterion_text, criterion_text_en, sort_order) values
+  ('11111111-1111-4111-8111-111111111301', v_s1_id, 'Menyebut LIFO atau menjelaskan terakhir masuk pertama keluar', 'Mentions LIFO or explains last in, first out', 1),
+  ('11111111-1111-4111-8111-111111111302', v_s1_id, 'Memberi contoh nyata yang tepat seperti tumpukan piring, buku, atau Undo', 'Gives an accurate real-world example like stacked plates, books, or Undo', 2),
+  ('11111111-1111-4111-8111-111111111303', v_s1_id, 'Menjelaskan operasi push (menaruh di atas) dan pop (mengambil dari atas)', 'Explains push (adding to the top) and pop (removing from the top)', 3),
 
-  ('11111111-1111-4111-8111-111111111304', v_s2_id, 'Menyebut hanya elemen teratas (top) yang bisa diakses atau diambil langsung', 'States that only the top element can be accessed or removed directly', 1, 1),
-  ('11111111-1111-4111-8111-111111111305', v_s2_id, 'Menjelaskan elemen di atasnya harus dikeluarkan (di-pop) dulu secara berurutan', 'Explains that elements above it must be popped off in order first', 1, 2),
-  ('11111111-1111-4111-8111-111111111306', v_s2_id, 'Memberi contoh atau ilustrasi seperti tumpukan piring/buku atau fitur Undo berurutan', 'Gives an example or illustration such as stacked plates/books or sequential Undo', 1, 3),
+  ('11111111-1111-4111-8111-111111111304', v_s2_id, 'Menyebut hanya elemen teratas (top) yang bisa diakses atau diambil langsung', 'States that only the top element can be accessed or removed directly', 1),
+  ('11111111-1111-4111-8111-111111111305', v_s2_id, 'Menjelaskan elemen di atasnya harus dikeluarkan (di-pop) dulu secara berurutan', 'Explains that elements above it must be popped off in order first', 2),
+  ('11111111-1111-4111-8111-111111111306', v_s2_id, 'Memberi contoh atau ilustrasi seperti tumpukan piring/buku atau fitur Undo berurutan', 'Gives an example or illustration such as stacked plates/books or sequential Undo', 3),
 
-  ('11111111-1111-4111-8111-111111111307', v_s3_id, 'Menyebut stack memiliki batas kapasitas atau ruang memori terbatas', 'States that a stack has a maximum capacity or limited memory', 1, 1),
-  ('11111111-1111-4111-8111-111111111308', v_s3_id, 'Menjelaskan push saat penuh akan gagal atau menyebabkan stack overflow', 'Explains that pushing when full fails or causes stack overflow', 1, 2),
-  ('11111111-1111-4111-8111-111111111309', v_s3_id, 'Memberi contoh nyata atau kasus seperti tumpukan roboh atau rekursi tanpa berhenti', 'Gives a real example or case like an overflowing pile or infinite recursion', 1, 3)
+  ('11111111-1111-4111-8111-111111111307', v_s3_id, 'Menyebut stack memiliki batas kapasitas atau ruang memori terbatas', 'States that a stack has a maximum capacity or limited memory', 1),
+  ('11111111-1111-4111-8111-111111111308', v_s3_id, 'Menjelaskan push saat penuh akan gagal atau menyebabkan stack overflow', 'Explains that pushing when full fails or causes stack overflow', 2),
+  ('11111111-1111-4111-8111-111111111309', v_s3_id, 'Memberi contoh nyata atau kasus seperti tumpukan roboh atau rekursi tanpa berhenti', 'Gives a real example or case like an overflowing pile or infinite recursion', 3)
   on conflict (id) do nothing;
 
   -- 2. Topic: Linked List (inactive draft, ID only)
@@ -119,17 +119,17 @@ begin
   )
   on conflict (id) do nothing;
 
-  insert into public.criteria (id, misconception_id, criterion_text, weight, sort_order) values
-  ('22222222-2222-4222-8222-222222222301', v_l1_id, 'Menyebut node dan pointer (next) sebagai penghubung antar data', 1, 1),
-  ('22222222-2222-4222-8222-222222222302', v_l1_id, 'Menjelaskan lokasi node tersebar di memori dan tidak harus berurutan seperti array', 1, 2),
-  ('22222222-2222-4222-8222-222222222303', v_l1_id, 'Menjelaskan sisip atau hapus node tidak perlu menggeser semua elemen lain', 1, 3),
+  insert into public.criteria (id, misconception_id, criterion_text, sort_order) values
+  ('22222222-2222-4222-8222-222222222301', v_l1_id, 'Menyebut node dan pointer (next) sebagai penghubung antar data', 1),
+  ('22222222-2222-4222-8222-222222222302', v_l1_id, 'Menjelaskan lokasi node tersebar di memori dan tidak harus berurutan seperti array', 2),
+  ('22222222-2222-4222-8222-222222222303', v_l1_id, 'Menjelaskan sisip atau hapus node tidak perlu menggeser semua elemen lain', 3),
 
-  ('22222222-2222-4222-8222-222222222304', v_l2_id, 'Menyebut harus menelusuri (traversal) dari head satu per satu', 1, 1),
-  ('22222222-2222-4222-8222-222222222305', v_l2_id, 'Menjelaskan tidak ada akses indeks langsung seperti array', 1, 2),
-  ('22222222-2222-4222-8222-222222222306', v_l2_id, 'Menyebut akses lebih lambat seiring posisi makin jauh (menyebut O(n) nilai tambah)', 1, 3),
+  ('22222222-2222-4222-8222-222222222304', v_l2_id, 'Menyebut harus menelusuri (traversal) dari head satu per satu', 1),
+  ('22222222-2222-4222-8222-222222222305', v_l2_id, 'Menjelaskan tidak ada akses indeks langsung seperti array', 2),
+  ('22222222-2222-4222-8222-222222222306', v_l2_id, 'Menyebut akses lebih lambat seiring posisi makin jauh (menyebut O(n) nilai tambah)', 3),
 
-  ('22222222-2222-4222-8222-222222222307', v_l3_id, 'Menyebut pointer node sebelumnya harus diarahkan ke node setelah yang dihapus (prev.next nilai tambah)', 1, 1),
-  ('22222222-2222-4222-8222-222222222308', v_l3_id, 'Menjelaskan tanpa pengubahan pointer, list terputus dan node berikutnya tidak terjangkau dari head', 1, 2),
-  ('22222222-2222-4222-8222-222222222309', v_l3_id, 'Memberi contoh 3 node (mis. A -> B -> C, hapus B lalu A menunjuk ke C)', 1, 3)
+  ('22222222-2222-4222-8222-222222222307', v_l3_id, 'Menyebut pointer node sebelumnya harus diarahkan ke node setelah yang dihapus (prev.next nilai tambah)', 1),
+  ('22222222-2222-4222-8222-222222222308', v_l3_id, 'Menjelaskan tanpa pengubahan pointer, list terputus dan node berikutnya tidak terjangkau dari head', 2),
+  ('22222222-2222-4222-8222-222222222309', v_l3_id, 'Memberi contoh 3 node (mis. A -> B -> C, hapus B lalu A menunjuk ke C)', 3)
   on conflict (id) do nothing;
 end $$;

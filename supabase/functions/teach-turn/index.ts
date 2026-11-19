@@ -384,31 +384,27 @@ Include EVERY criterion id from the list, in the same order.`;
       }
     }
 
-    // Compute updated session meter (monotonic) and active misconception meter
-    let totalWeight = 0;
-    let fulfilledWeight = 0;
-    for (const c of criteriaList) {
-      totalWeight += c.weight;
-      if (scMap.get(c.id)?.fulfilled) {
-        fulfilledWeight += c.weight;
-      }
-    }
+    // Compute updated session meter (monotonic) and active misconception meter.
+    // Spec (disetujui Rid, 12 Nov 2026): bobot sama rata — meter = kriteria
+    // terpenuhi / total kriteria x 100%. Kolom `weight` sengaja TIDAK dipakai
+    // di sini, supaya guru yang mengubah bobot tidak bisa diam-diam mengubah
+    // meter. (Fix 19 Nov 2026: sebelumnya meter dihitung dari bobot.)
+    const totalCriteria = criteriaList.length;
+    const fulfilledCriteria = criteriaList.filter((c) =>
+      scMap.get(c.id)?.fulfilled
+    ).length;
     const rawMeter =
-      totalWeight > 0 ? Math.round((fulfilledWeight / totalWeight) * 100) : 0;
+      totalCriteria > 0
+        ? Math.round((fulfilledCriteria / totalCriteria) * 100)
+        : 0;
     const newMeter = Math.max(session.meter_percent, Math.min(100, rawMeter));
 
-    let activeWeight = 0;
-    let activeFulfilledWeight = 0;
-    for (const c of activeCriteria) {
-      activeWeight += c.weight;
-      if (scMap.get(c.id)?.fulfilled) {
-        activeFulfilledWeight += c.weight;
-      }
-    }
+    const activeTotal = activeCriteria.length;
+    const activeDone = activeCriteria.filter((c) =>
+      scMap.get(c.id)?.fulfilled
+    ).length;
     const activeMeterPercent =
-      activeWeight > 0
-        ? Math.round((activeFulfilledWeight / activeWeight) * 100)
-        : 0;
+      activeTotal > 0 ? Math.round((activeDone / activeTotal) * 100) : 0;
 
     const inputsUsed = session.student_inputs + 1;
     let staleTurns =

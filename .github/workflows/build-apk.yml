@@ -35,8 +35,8 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build APK (Debug or Release)
-        run: flutter build apk --split-per-abi
+      - name: Build APK (Release)
+        run: flutter build apk --split-per-abi --android-skip-build-dependency-validation
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4

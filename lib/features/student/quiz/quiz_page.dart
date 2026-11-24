@@ -6,6 +6,7 @@ import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/clay_widgets.dart';
+import '../../../core/widgets/student_bottom_nav.dart';
 
 class QuizPage extends ConsumerStatefulWidget {
   const QuizPage({
@@ -126,6 +127,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
     return Scaffold(
       backgroundColor: AppTheme.clayCanvas,
+      bottomNavigationBar: const StudentBottomNav(currentIndex: 1),
       appBar: AppBar(
         title: Text(
           typeLabel,

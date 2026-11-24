@@ -6,6 +6,7 @@ import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/clay_widgets.dart';
+import '../../../core/widgets/student_bottom_nav.dart';
 
 class AnnouncementsPage extends ConsumerStatefulWidget {
   const AnnouncementsPage({super.key});
@@ -33,6 +34,7 @@ class _AnnouncementsPageState extends ConsumerState<AnnouncementsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.clayCanvas,
+      bottomNavigationBar: const StudentBottomNav(currentIndex: 1),
       appBar: AppBar(
         title: Text(
           'Papan Pengumuman & Tugas',

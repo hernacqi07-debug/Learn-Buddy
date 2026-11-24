@@ -7,6 +7,7 @@ import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/clay_widgets.dart';
+import '../../../core/widgets/student_bottom_nav.dart';
 
 class MateriPage extends ConsumerStatefulWidget {
   const MateriPage({super.key, required this.topicId});
@@ -70,6 +71,7 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.clayCanvas,
+      bottomNavigationBar: const StudentBottomNav(currentIndex: 1),
       appBar: AppBar(
         title: Text(
           'Modul Materi',

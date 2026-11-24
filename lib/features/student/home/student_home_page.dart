@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/clay_widgets.dart';
+import '../../../core/widgets/student_bottom_nav.dart';
 
 /// Beranda siswa — mengikuti layar "Beranda Dashboard (Blank)" di Stitch
 /// (Learn Buddy Claymorphic): kartu identitas besar, Ringkasan Progres,
@@ -66,94 +66,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
   }
 
   Future<void> _startNewSessionDialog(TopicSummary topic) async {
-    final l10n = context.l10n;
-    final appLang = ref.read(languageProvider).languageCode;
-    String selectedLang = (appLang == 'en' && topic.enReady) ? 'en' : 'id';
-
-    final chosen = await showDialog<String>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-            side: const BorderSide(color: AppTheme.clayBorder, width: 2),
-          ),
-          title: Text(
-            l10n.chooseSessionLanguage,
-            style: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w800,
-              fontSize: 18,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              RadioListTile<String>(
-                value: 'id',
-                groupValue: selectedLang,
-                title: Text(
-                  l10n.indonesianLabel,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                activeColor: AppTheme.primaryIndigo,
-                onChanged: (v) {
-                  if (v != null) setDialogState(() => selectedLang = v);
-                },
-              ),
-              RadioListTile<String>(
-                value: 'en',
-                groupValue: selectedLang,
-                enabled: topic.enReady,
-                activeColor: AppTheme.primaryIndigo,
-                title: Text(
-                  l10n.englishLabel,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                subtitle: !topic.enReady
-                    ? Text(
-                        l10n.enLockedNote,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: AppTheme.textMuted,
-                        ),
-                      )
-                    : null,
-                onChanged: (v) {
-                  if (v != null && topic.enReady)
-                    setDialogState(() => selectedLang = v);
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(
-                l10n.cancel,
-                style: GoogleFonts.plusJakartaSans(
-                  color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            ClayButton(
-              text: 'Mulai Sesi',
-              height: 44,
-              onPressed: () => Navigator.pop(ctx, selectedLang),
-            ),
-          ],
-        ),
-      ),
-    );
-
+    final chosen = await showSessionLanguageDialog(context, ref, topic);
     if (chosen == null || !mounted) return;
 
     try {
@@ -269,6 +182,10 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
 
     return Scaffold(
       backgroundColor: AppTheme.clayCanvas,
+      bottomNavigationBar: StudentBottomNav(
+        currentIndex: 1,
+        onReturnFromChat: _reload,
+      ),
       appBar: AppBar(
         title: Row(
           children: [

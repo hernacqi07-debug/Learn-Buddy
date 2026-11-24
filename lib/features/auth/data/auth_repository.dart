@@ -9,14 +9,15 @@ class AuthRepository {
 
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
-  Future<void> signIn({
+  Future<User?> signIn({
     required String email,
     required String password,
   }) async {
-    await _client.auth.signInWithPassword(
+    final res = await _client.auth.signInWithPassword(
       email: email.trim(),
       password: password,
     );
+    return res.user;
   }
 
   Future<UserProfile> signUp({
@@ -54,8 +55,10 @@ class AuthRepository {
     }
   }
 
-  Future<UserProfile?> fetchCurrentProfile() async {
-    final uid = _client.auth.currentUser?.id;
+  Future<UserProfile?> fetchCurrentProfile([String? explicitUid]) async {
+    final uid = explicitUid ??
+        _client.auth.currentUser?.id ??
+        _client.auth.currentSession?.user.id;
     if (uid == null) return null;
     final row = await _client
         .from('profiles')

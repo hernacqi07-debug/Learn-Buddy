@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 
@@ -13,39 +14,74 @@ class ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isStudent = message.isStudent;
+
     return Align(
       alignment: isStudent ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+          maxWidth: MediaQuery.sizeOf(context).width * 0.82,
         ),
-        margin: const EdgeInsets.symmetric(vertical: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        decoration: BoxDecoration(
-          color: isStudent ? AppTheme.primaryTeal : Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(isStudent ? 18 : 4),
-            bottomRight: Radius.circular(isStudent ? 4 : 18),
-          ),
-          border: isStudent
-              ? null
-              : Border.all(color: const Color(0xFFD7E5EC)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isStudent ? AppTheme.primaryIndigo : Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(20),
+              topRight: const Radius.circular(20),
+              bottomLeft: Radius.circular(isStudent ? 20 : 6),
+              bottomRight: Radius.circular(isStudent ? 6 : 20),
             ),
-          ],
-        ),
-        child: Text(
-          message.content,
-          style: TextStyle(
-            color: isStudent ? Colors.white : const Color(0xFF102A36),
-            fontSize: 14.5,
-            height: 1.4,
+            border: Border.all(
+              color: isStudent ? const Color(0xFF3730A3) : AppTheme.clayBorder,
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isStudent
+                    ? AppTheme.primaryIndigo.withValues(alpha: 0.25)
+                    : const Color(0xFF1E1B4B).withValues(alpha: 0.06),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: isStudent
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
+            children: [
+              // Role Badge
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!isStudent) ...[
+                    const Text('🤖 ', style: TextStyle(fontSize: 12)),
+                  ],
+                  Text(
+                    isStudent ? 'KAMU (PENGAJAR)' : 'BUDDY (MURID AI)',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.6,
+                      color: isStudent
+                          ? const Color(0xFFC7D2FE)
+                          : AppTheme.primaryIndigo,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                message.content,
+                style: GoogleFonts.plusJakartaSans(
+                  color: isStudent ? Colors.white : AppTheme.textPrimary,
+                  fontSize: 14,
+                  height: 1.45,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       ),

@@ -51,6 +51,9 @@ class UserProfile {
     required this.displayName,
     required this.role,
     required this.languagePref,
+    this.nisn,
+    this.className,
+    this.schoolName,
   });
 
   final String id;
@@ -58,6 +61,9 @@ class UserProfile {
   final String displayName;
   final UserRole role;
   final String languagePref;
+  final String? nisn;
+  final String? className;
+  final String? schoolName;
 
   factory UserProfile.fromMap(Map<String, dynamic> map) {
     return UserProfile(
@@ -66,6 +72,65 @@ class UserProfile {
       displayName: (map['display_name'] as String?) ?? '',
       role: UserRole.fromString((map['role'] as String?) ?? 'student'),
       languagePref: (map['language_pref'] as String?) ?? 'id',
+      nisn: map['nisn'] as String?,
+      className: map['class_name'] as String?,
+      schoolName: map['school_name'] as String?,
+    );
+  }
+}
+
+class Course {
+  const Course({
+    required this.id,
+    required this.code,
+    required this.titleId,
+    required this.titleEn,
+    required this.descriptionId,
+    required this.descriptionEn,
+    required this.icon,
+    required this.accentColor,
+    this.teacherId,
+    this.teacherName,
+    required this.sortOrder,
+    required this.isActive,
+    this.topicCount = 0,
+  });
+
+  final String id;
+  final String code;
+  final String titleId;
+  final String titleEn;
+  final String descriptionId;
+  final String descriptionEn;
+  final String icon;
+  final String accentColor;
+  final String? teacherId;
+  final String? teacherName;
+  final int sortOrder;
+  final bool isActive;
+  final int topicCount;
+
+  String localizedTitle(String lang) =>
+      lang == 'en' && titleEn.isNotEmpty ? titleEn : titleId;
+
+  String localizedDesc(String lang) =>
+      lang == 'en' && descriptionEn.isNotEmpty ? descriptionEn : descriptionId;
+
+  factory Course.fromMap(Map<String, dynamic> map, {int topicCount = 0, String? teacherName}) {
+    return Course(
+      id: map['id'] as String,
+      code: (map['code'] as String?) ?? '',
+      titleId: (map['title_id'] as String?) ?? '',
+      titleEn: (map['title_en'] as String?) ?? '',
+      descriptionId: (map['description_id'] as String?) ?? '',
+      descriptionEn: (map['description_en'] as String?) ?? '',
+      icon: (map['icon'] as String?) ?? 'layers',
+      accentColor: (map['accent_color'] as String?) ?? '#06B6D4',
+      teacherId: map['teacher_id'] as String?,
+      teacherName: teacherName ?? (map['profiles'] as Map<String, dynamic>?)?['display_name'] as String?,
+      sortOrder: (map['sort_order'] as num?)?.toInt() ?? 1,
+      isActive: (map['is_active'] as bool?) ?? true,
+      topicCount: topicCount,
     );
   }
 }
@@ -73,6 +138,7 @@ class UserProfile {
 class TopicSummary {
   const TopicSummary({
     required this.id,
+    this.courseId,
     required this.titleId,
     required this.titleEn,
     required this.descriptionId,
@@ -82,9 +148,14 @@ class TopicSummary {
     required this.bestMeterPercent,
     required this.hasCompleted80,
     this.activeSessionId,
+    this.theoryContent,
+    this.analogyContent,
+    this.codeSnippet,
+    this.readingTimeMinutes = 5,
   });
 
   final String id;
+  final String? courseId;
   final String titleId;
   final String titleEn;
   final String descriptionId;
@@ -94,6 +165,10 @@ class TopicSummary {
   final int bestMeterPercent;
   final bool hasCompleted80;
   final String? activeSessionId;
+  final String? theoryContent;
+  final String? analogyContent;
+  final String? codeSnippet;
+  final int readingTimeMinutes;
 
   String localizedTitle(String lang) =>
       lang == 'en' && titleEn.isNotEmpty ? titleEn : titleId;
@@ -104,6 +179,7 @@ class TopicSummary {
   factory TopicSummary.fromMap(Map<String, dynamic> map) {
     return TopicSummary(
       id: map['id'] as String,
+      courseId: map['course_id'] as String?,
       titleId: (map['title_id'] as String?) ?? '',
       titleEn: (map['title_en'] as String?) ?? '',
       descriptionId: (map['description_id'] as String?) ?? '',
@@ -113,6 +189,10 @@ class TopicSummary {
       bestMeterPercent: (map['best_meter_percent'] as num?)?.toInt() ?? 0,
       hasCompleted80: (map['has_completed_80'] as bool?) ?? false,
       activeSessionId: map['active_session_id'] as String?,
+      theoryContent: map['theory_content'] as String?,
+      analogyContent: map['analogy_content'] as String?,
+      codeSnippet: map['code_snippet'] as String?,
+      readingTimeMinutes: (map['reading_time_minutes'] as num?)?.toInt() ?? 5,
     );
   }
 }
@@ -351,6 +431,7 @@ class TeacherMisconception {
 class TeacherTopic {
   const TeacherTopic({
     required this.id,
+    this.courseId,
     required this.titleId,
     required this.titleEn,
     required this.descriptionId,
@@ -362,6 +443,7 @@ class TeacherTopic {
   });
 
   final String id;
+  final String? courseId;
   final String titleId;
   final String titleEn;
   final String descriptionId;
@@ -381,6 +463,7 @@ class TeacherTopic {
   ) {
     return TeacherTopic(
       id: map['id'] as String,
+      courseId: map['course_id'] as String?,
       titleId: (map['title_id'] as String?) ?? '',
       titleEn: (map['title_en'] as String?) ?? '',
       descriptionId: (map['description_id'] as String?) ?? '',
@@ -435,4 +518,129 @@ class TeacherStudentSessionDetail {
 
   final LearningSession session;
   final List<TeacherSessionCriterionItem> criteriaItems;
+}
+
+class Assignment {
+  const Assignment({
+    required this.id,
+    required this.teacherId,
+    this.courseId,
+    this.topicId,
+    required this.title,
+    required this.description,
+    required this.type,
+    this.dueDate,
+    required this.createdAt,
+    this.isActive = true,
+    this.teacherName,
+    this.topicTitle,
+  });
+
+  final String id;
+  final String teacherId;
+  final String? courseId;
+  final String? topicId;
+  final String title;
+  final String description;
+  final String type; // 'assignment' | 'announcement' | 'praktikum'
+  final DateTime? dueDate;
+  final DateTime createdAt;
+  final bool isActive;
+  final String? teacherName;
+  final String? topicTitle;
+
+  factory Assignment.fromMap(Map<String, dynamic> map) {
+    return Assignment(
+      id: map['id'] as String,
+      teacherId: (map['teacher_id'] as String?) ?? '',
+      courseId: map['course_id'] as String?,
+      topicId: map['topic_id'] as String?,
+      title: (map['title'] as String?) ?? '',
+      description: (map['description'] as String?) ?? '',
+      type: (map['type'] as String?) ?? 'assignment',
+      dueDate: map['due_date'] != null ? DateTime.tryParse(map['due_date'] as String) : null,
+      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String) : DateTime.now(),
+      isActive: (map['is_active'] as bool?) ?? true,
+      teacherName: (map['profiles'] as Map<String, dynamic>?)?['display_name'] as String?,
+      topicTitle: (map['topics'] as Map<String, dynamic>?)?['title_id'] as String?,
+    );
+  }
+}
+
+class Question {
+  const Question({
+    required this.id,
+    required this.topicId,
+    required this.quizType,
+    required this.questionText,
+    this.codeSnippet,
+    required this.options,
+    required this.correctIndex,
+    this.explanation,
+    required this.sortOrder,
+  });
+
+  final String id;
+  final String topicId;
+  final String quizType; // 'pre_test' | 'post_test'
+  final String questionText;
+  final String? codeSnippet;
+  final List<String> options;
+  final int correctIndex;
+  final String? explanation;
+  final int sortOrder;
+
+  factory Question.fromMap(Map<String, dynamic> map) {
+    final rawOptions = map['options'];
+    List<String> parsedOptions = [];
+    if (rawOptions is List) {
+      parsedOptions = rawOptions.map((e) => e.toString()).toList();
+    }
+    return Question(
+      id: map['id'] as String,
+      topicId: map['topic_id'] as String,
+      quizType: (map['quiz_type'] as String?) ?? 'pre_test',
+      questionText: (map['question_text'] as String?) ?? '',
+      codeSnippet: map['code_snippet'] as String?,
+      options: parsedOptions,
+      correctIndex: (map['correct_index'] as num?)?.toInt() ?? 0,
+      explanation: map['explanation'] as String?,
+      sortOrder: (map['sort_order'] as num?)?.toInt() ?? 1,
+    );
+  }
+}
+
+class QuizAttempt {
+  const QuizAttempt({
+    required this.id,
+    required this.studentId,
+    required this.topicId,
+    required this.quizType,
+    required this.score,
+    required this.totalQuestions,
+    required this.answers,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String studentId;
+  final String topicId;
+  final String quizType;
+  final int score;
+  final int totalQuestions;
+  final Map<String, dynamic> answers;
+  final DateTime createdAt;
+
+  factory QuizAttempt.fromMap(Map<String, dynamic> map) {
+    return QuizAttempt(
+      id: map['id'] as String,
+      studentId: map['student_id'] as String,
+      topicId: map['topic_id'] as String,
+      quizType: (map['quiz_type'] as String?) ?? 'pre_test',
+      score: (map['score'] as num?)?.toInt() ?? 0,
+      totalQuestions: (map['total_questions'] as num?)?.toInt() ?? 0,
+      answers: (map['answers'] as Map<String, dynamic>?) ?? {},
+      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String) : DateTime.now(),
+    );
+  }
 }

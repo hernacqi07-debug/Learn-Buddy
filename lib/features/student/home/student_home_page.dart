@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/meter_paham_bar.dart';
+import '../../../core/widgets/clay_widgets.dart';
 
 class StudentHomePage extends ConsumerStatefulWidget {
   const StudentHomePage({super.key});
@@ -15,27 +17,52 @@ class StudentHomePage extends ConsumerStatefulWidget {
 }
 
 class _StudentHomePageState extends ConsumerState<StudentHomePage> {
-  late Future<(List<TopicSummary>, List<LearningSession>)> _loadFuture;
+  String _studentAvatar = '👨‍🎓';
+
+  late Future<(List<Course>, List<TopicSummary>, List<LearningSession>, List<Assignment>)>
+      _loadFuture;
+  String? _selectedCourseId;
 
   @override
   void initState() {
     super.initState();
     _loadFuture = _fetchData();
+    _loadStudentAvatar();
   }
 
-  Future<(List<TopicSummary>, List<LearningSession>)> _fetchData() async {
+  Future<void> _loadStudentAvatar() async {
+    final prefs = await SharedPreferences.getInstance();
+    final av = prefs.getString('student_avatar');
+    if (av != null && mounted) {
+      setState(() => _studentAvatar = av);
+    }
+  }
+
+  Future<(List<Course>, List<TopicSummary>, List<LearningSession>, List<Assignment>)>
+      _fetchData() async {
     final repo = ref.read(sessionRepositoryProvider);
     final results = await Future.wait([
+      repo.getCourses(),
       repo.getTopicsSummary(),
       repo.getMySessions(),
+      repo.getAssignments(),
     ]);
+
+    final courses = results[0] as List<Course>;
+    if (_selectedCourseId == null && courses.isNotEmpty) {
+      _selectedCourseId = courses.first.id;
+    }
+
     return (
-      results[0] as List<TopicSummary>,
-      results[1] as List<LearningSession>,
+      courses,
+      results[1] as List<TopicSummary>,
+      results[2] as List<LearningSession>,
+      results[3] as List<Assignment>,
     );
   }
 
   void _reload() {
+    _loadStudentAvatar();
     setState(() {
       _loadFuture = _fetchData();
     });
@@ -50,53 +77,75 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(l10n.chooseSessionLanguage),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: const BorderSide(color: AppTheme.clayBorder, width: 2),
+          ),
+          title: Text(
+            l10n.chooseSessionLanguage,
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              color: AppTheme.textPrimary,
+            ),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              RadioGroup<String>(
+              RadioListTile<String>(
+                value: 'id',
                 groupValue: selectedLang,
+                title: Text(
+                  l10n.indonesianLabel,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                activeColor: AppTheme.primaryIndigo,
                 onChanged: (v) {
-                  if (v == 'en' && !topic.enReady) return;
                   if (v != null) setDialogState(() => selectedLang = v);
                 },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    RadioListTile<String>(
-                      value: 'id',
-                      title: Text(l10n.indonesianLabel),
-                    ),
-                    RadioListTile<String>(
-                      value: 'en',
-                      enabled: topic.enReady,
-                      title: Text(l10n.englishLabel),
-                      subtitle: !topic.enReady
-                          ? Text(
-                              l10n.enLockedNote,
-                              style: const TextStyle(fontSize: 12),
-                            )
-                          : null,
-                    ),
-                  ],
-                ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                l10n.sessionLanguageNote,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+              RadioListTile<String>(
+                value: 'en',
+                groupValue: selectedLang,
+                enabled: topic.enReady,
+                activeColor: AppTheme.primaryIndigo,
+                title: Text(
+                  l10n.englishLabel,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                subtitle: !topic.enReady
+                    ? Text(
+                        l10n.enLockedNote,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppTheme.textMuted),
+                      )
+                    : null,
+                onChanged: (v) {
+                  if (v != null && topic.enReady) {
+                    setDialogState(() => selectedLang = v);
+                  }
+                },
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text(l10n.cancel),
+              child: Text(
+                l10n.cancel,
+                style: GoogleFonts.plusJakartaSans(color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+              ),
             ),
-            ElevatedButton(
+            ClayButton(
+              text: 'Mulai Sesi',
+              height: 44,
               onPressed: () => Navigator.pop(ctx, selectedLang),
-              child: Text(l10n.confirm),
             ),
           ],
         ),
@@ -115,59 +164,155 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
+        SnackBar(
+          content: Text('Gagal memulai sesi: $e'),
+          backgroundColor: AppTheme.dangerRed,
+        ),
       );
     }
   }
 
-  Future<void> _deleteSession(LearningSession session) async {
-    final l10n = context.l10n;
-    final ok = await showDialog<bool>(
+  void _showProtegeGuideDialog() {
+    showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l10n.deleteSessionTitle),
-        content: Text(l10n.deleteSessionBody),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: AppTheme.clayBorder, width: 2),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryIndigoLight,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.psychology_rounded, color: AppTheme.primaryIndigo),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Metode Protégé Effect',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 17,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Apa itu Protégé Effect?',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Protégé Effect adalah fenomena psikologi pendidikan di mana seseorang memahami suatu materi secara jauh lebih mendalam ketika ia mengajarkannya kepada orang lain.',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                color: AppTheme.textSecondary,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Peran Anda di Learn Buddy:',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Buddy adalah murid AI Anda yang sedang bingung dengan konsep Struktur Data. Jelaskan prinsip-prinsipnya dengan bahasa Anda sendiri, gunakan analogi riil, dan koreksi kekeliruan Buddy hingga meter pemahamannya mencapai 100%!',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                color: AppTheme.textSecondary,
+                height: 1.45,
+              ),
+            ),
+          ],
+        ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.cancel),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.dangerRed),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.delete),
+          ClayButton(
+            text: 'Saya Paham, Siap Mengajar!',
+            height: 44,
+            onPressed: () => Navigator.pop(ctx),
           ),
         ],
       ),
     );
-    if (ok != true) return;
-    await ref.read(sessionRepositoryProvider).deleteSession(session.id);
-    _reload();
   }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final lang = ref.watch(languageProvider).languageCode;
     final profile = ref.watch(currentProfileProvider).value;
 
     return Scaffold(
+      backgroundColor: AppTheme.clayCanvas,
       appBar: AppBar(
-        title: Text(l10n.studentHomeTitle),
+        title: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryIndigoLight,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.clayBorder, width: 1.5),
+              ),
+              child: Center(
+                child: Text(_studentAvatar, style: const TextStyle(fontSize: 20)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Halo, ${profile?.displayName ?? 'Siswa'}! 👋',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  Text(
+                    '${profile?.className ?? 'XI RPL'} · ${profile?.schoolName ?? 'SMK Negeri'}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            tooltip: l10n.settingsTitle,
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () async {
-              await context.push('/settings');
-              _reload();
-            },
+            icon: const Icon(Icons.settings_outlined, color: AppTheme.textPrimary),
+            onPressed: () => context.push('/settings'),
           ),
         ],
       ),
       body: RefreshIndicator(
+        color: AppTheme.primaryIndigo,
         onRefresh: () async => _reload(),
-        child: FutureBuilder<(List<TopicSummary>, List<LearningSession>)>(
+        child: FutureBuilder<(List<Course>, List<TopicSummary>, List<LearningSession>, List<Assignment>)>(
           future: _loadFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -180,123 +325,292 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(snapshot.error.toString(), textAlign: TextAlign.center),
+                      Text(
+                        'Gagal memuat data: ${snapshot.error}',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(color: AppTheme.dangerRed),
+                      ),
                       const SizedBox(height: 12),
-                      ElevatedButton(onPressed: _reload, child: Text(l10n.retry)),
+                      ClayButton(
+                        text: 'Coba Lagi',
+                        onPressed: _reload,
+                      ),
                     ],
                   ),
                 ),
               );
             }
 
-            final topics = snapshot.data?.$1 ?? const [];
-            final sessions = snapshot.data?.$2 ?? const [];
+            final (courses, topics, sessions, assignments) = snapshot.data!;
+            final currentTopic = topics.isNotEmpty
+                ? topics.first
+                : const TopicSummary(
+                    id: 'stack-default',
+                    titleId: 'Stack (Tumpukan)',
+                    titleEn: 'Stack',
+                    descriptionId: 'Struktur data LIFO untuk operasi Push dan Pop.',
+                    descriptionEn: 'LIFO data structure for push and pop operations.',
+                    sortOrder: 1,
+                    enReady: true,
+                    bestMeterPercent: 0,
+                    hasCompleted80: false,
+                  );
+
+            // Compute overall understanding progress
+            final int bestMeter = currentTopic.bestMeterPercent;
 
             return ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               children: [
-                if (profile != null) ...[
-                  Text(
-                    l10n.welcomeUser(profile.displayName),
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF102A36),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.appTagline,
-                    style: const TextStyle(color: Color(0xFF475569)),
-                  ),
-                  const SizedBox(height: 18),
-                ],
-                Text(
-                  l10n.topicsSectionTitle,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                if (topics.isEmpty)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Text(l10n.noTopicsAvailable),
-                    ),
-                  )
-                else
-                  ...topics.map((t) => _TopicCard(
-                        topic: t,
-                        lang: lang,
-                        onContinue: t.activeSessionId == null
-                            ? null
-                            : () async {
-                                await context.push(
-                                  '/student/teach/${t.activeSessionId}',
-                                );
-                                _reload();
-                              },
-                        onStartNew: () => _startNewSessionDialog(t),
-                      )),
-                const SizedBox(height: 22),
-                Text(
-                  l10n.historySectionTitle,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                if (sessions.isEmpty)
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Text(l10n.noHistoryYet),
-                    ),
-                  )
-                else
-                  ...sessions.map(
-                    (s) => Card(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        title: Text(
-                          s.localizedTopicTitle(lang),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Text(
-                          '${_statusLabel(context, s.status)} · ${s.meterPercent}% · '
-                          '${s.language.toUpperCase()}',
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.delete_outline,
-                                color: AppTheme.dangerRed,
+                // 1. Progres Belajar Card (Tactile Claymorphic)
+                ClayCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Progres Belajar: Struktur Data',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: AppTheme.textPrimary,
+                                ),
                               ),
-                              onPressed: () => _deleteSession(s),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Topik Aktif: ${currentTopic.titleId}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: bestMeter >= 80 ? AppTheme.successGreenLight : AppTheme.primaryIndigoLight,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: bestMeter >= 80 ? AppTheme.successGreen : AppTheme.primaryIndigo,
+                                width: 1.2,
+                              ),
                             ),
-                            const Icon(Icons.chevron_right),
-                          ],
-                        ),
-                        onTap: () async {
-                          if (s.status == SessionStatus.active) {
-                            await context.push('/student/teach/${s.id}');
-                          } else {
-                            await context.push('/student/recap/${s.id}');
-                          }
-                          _reload();
-                        },
+                            child: Text(
+                              '$bestMeter% Paham',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                                color: bestMeter >= 80 ? AppTheme.successGreen : AppTheme.primaryIndigo,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ClayProgressBar(
+                        progress: bestMeter / 100.0,
+                        height: 10,
+                        barColor: bestMeter >= 80 ? AppTheme.successGreen : AppTheme.primaryIndigo,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClayButton(
+                              text: bestMeter > 0 ? 'Lanjutkan Mengajar' : 'Mulai Mengajar Buddy',
+                              icon: Icons.chat_bubble_rounded,
+                              onPressed: () => _startNewSessionDialog(currentTopic),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // 2. Section Header: 8 Fitur Belajar
+                Text(
+                  'Fitur Pembelajaran Siswa',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // 8 Fitur Belajar Clay Buttons Grid (2 columns)
+                GridView.count(
+                  crossAxisCount: 2,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 1.45,
+                  children: [
+                    _buildFeatureCard(
+                      title: 'Modul Materi',
+                      subtitle: 'Teori & analogi LIFO',
+                      icon: Icons.menu_book_rounded,
+                      iconBg: const Color(0xFFEEF2FF),
+                      iconColor: AppTheme.primaryIndigo,
+                      onTap: () => context.push('/student/materi/${currentTopic.id}'),
+                    ),
+                    _buildFeatureCard(
+                      title: 'Kuis Pemahaman',
+                      subtitle: 'Evaluasi konsep Stack',
+                      icon: Icons.quiz_rounded,
+                      iconBg: const Color(0xFFFEF3C7),
+                      iconColor: const Color(0xFFB45309),
+                      onTap: () => context.push('/student/quiz/${currentTopic.id}?type=post_test'),
+                    ),
+                    _buildFeatureCard(
+                      title: 'Riwayat Sesi',
+                      subtitle: '${sessions.length} sesi mengajar',
+                      icon: Icons.history_rounded,
+                      iconBg: const Color(0xFFECFDF5),
+                      iconColor: const Color(0xFF047857),
+                      onTap: () => context.push('/student/history'),
+                    ),
+                    _buildFeatureCard(
+                      title: 'Papan Tugas',
+                      subtitle: '${assignments.length} tugas aktif',
+                      icon: Icons.campaign_rounded,
+                      iconBg: const Color(0xFFFFF7ED),
+                      iconColor: AppTheme.accentOrange,
+                      onTap: () => context.push('/student/announcements'),
+                    ),
+                    _buildFeatureCard(
+                      title: 'Ruang AI Buddy',
+                      subtitle: 'Bimbing murid AI',
+                      icon: Icons.smart_toy_rounded,
+                      iconBg: const Color(0xFFF3E8FF),
+                      iconColor: const Color(0xFF7E22CE),
+                      onTap: () => _startNewSessionDialog(currentTopic),
+                    ),
+                    _buildFeatureCard(
+                      title: 'Panduan Protégé',
+                      subtitle: 'Belajar lewat mengajar',
+                      icon: Icons.psychology_rounded,
+                      iconBg: const Color(0xFFE0F2FE),
+                      iconColor: const Color(0xFF0369A1),
+                      onTap: _showProtegeGuideDialog,
+                    ),
+                    _buildFeatureCard(
+                      title: 'Pre-Test Awal',
+                      subtitle: 'Uji pemahaman dasar',
+                      icon: Icons.assignment_turned_in_rounded,
+                      iconBg: const Color(0xFFFCE7F3),
+                      iconColor: const Color(0xFFBE185D),
+                      onTap: () => context.push('/student/quiz/${currentTopic.id}?type=pre_test'),
+                    ),
+                    _buildFeatureCard(
+                      title: 'Pengaturan Akun',
+                      subtitle: 'Profil & sandi akun',
+                      icon: Icons.tune_rounded,
+                      iconBg: const Color(0xFFF1F5F9),
+                      iconColor: const Color(0xFF475569),
+                      onTap: () => context.push('/settings'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // 3. Tugas Terbaru dari Guru (Real Data)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Tugas & Pengumuman Guru',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
                       ),
                     ),
-                  ),
+                    TextButton(
+                      onPressed: () => context.push('/student/announcements'),
+                      child: Text(
+                        'Lihat Semua',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppTheme.primaryIndigo,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                if (assignments.isEmpty)
+                  ClayCard(
+                    padding: const EdgeInsets.all(16),
+                    child: Center(
+                      child: Text(
+                        'Belum ada tugas baru yang diberikan.',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: AppTheme.textSecondary,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ...assignments.take(2).map((item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: ClayCard(
+                          padding: const EdgeInsets.all(16),
+                          onTap: () => context.push('/student/announcements'),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryIndigoLight,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.assignment_rounded, color: AppTheme.primaryIndigo),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.title,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 14.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppTheme.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      item.teacherName ?? 'Pak Hendra, S.Kom',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12.5,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.textMuted),
+                            ],
+                          ),
+                        ),
+                      )),
+
+                const SizedBox(height: 20),
               ],
             );
           },
@@ -305,128 +619,52 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
     );
   }
 
-  String _statusLabel(BuildContext context, SessionStatus status) {
-    final l10n = context.l10n;
-    return switch (status) {
-      SessionStatus.completed => l10n.sessionStatusCompleted,
-      SessionStatus.incomplete => l10n.sessionStatusIncomplete,
-      SessionStatus.abandoned => l10n.sessionStatusAbandoned,
-      SessionStatus.active => l10n.sessionStatusActive,
-    };
-  }
-}
-
-class _TopicCard extends StatelessWidget {
-  const _TopicCard({
-    required this.topic,
-    required this.lang,
-    required this.onStartNew,
-    this.onContinue,
-  });
-
-  final TopicSummary topic;
-  final String lang;
-  final VoidCallback onStartNew;
-  final VoidCallback? onContinue;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final String statusText;
-    final Color statusColor;
-    if (topic.hasCompleted80) {
-      statusText = l10n.statusTargetReached;
-      statusColor = AppTheme.successGreen;
-    } else if (topic.activeSessionId != null || topic.bestMeterPercent > 0) {
-      statusText = l10n.statusInProgress;
-      statusColor = AppTheme.secondaryAmber;
-    } else {
-      statusText = l10n.statusNotStarted;
-      statusColor = const Color(0xFF64748B);
-    }
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    topic.localizedTitle(lang),
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    statusText,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: statusColor,
-                    ),
-                  ),
-                ),
-              ],
+  Widget _buildFeatureCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color iconBg,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return ClayCard(
+      padding: const EdgeInsets.all(14),
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(10),
             ),
-            if (topic.localizedDesc(lang).isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
-                topic.localizedDesc(lang),
-                style: const TextStyle(color: Color(0xFF475569), fontSize: 13.5),
-              ),
-            ],
-            const SizedBox(height: 12),
-            Text(
-              l10n.bestMeterLabel(topic.bestMeterPercent),
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.textPrimary,
             ),
-            const SizedBox(height: 6),
-            MeterPahamBar(meterPercent: topic.bestMeterPercent, compact: true),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                if (onContinue != null) ...[
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: onContinue,
-                      child: Text(l10n.continueSession),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                ],
-                Expanded(
-                  child: onContinue != null
-                      ? OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(0, 48),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          onPressed: onStartNew,
-                          child: Text(l10n.startNewSession),
-                        )
-                      : ElevatedButton(
-                          onPressed: onStartNew,
-                          child: Text(l10n.startNewSession),
-                        ),
-                ),
-              ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: AppTheme.textMuted,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

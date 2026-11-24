@@ -31,6 +31,92 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.dispose();
   }
 
+  void _showForgotPasswordDialog() {
+    final resetEmailCtrl = TextEditingController(text: _emailCtrl.text);
+    bool isSending = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: const BorderSide(color: AppTheme.clayBorder, width: 2),
+          ),
+          title: const Text(
+            'Reset Kata Sandi',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 17,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Masukkan email akun Anda. Kami akan mengirimkan tautan pemulihan kata sandi ke kotak masuk Anda.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: resetEmailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email Akun',
+                  prefixIcon: Icon(Icons.email_outlined),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(
+                'Batal',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: isSending
+                  ? null
+                  : () async {
+                      final email = resetEmailCtrl.text.trim();
+                      if (email.isEmpty || !email.contains('@')) return;
+                      setDialogState(() => isSending = true);
+                      try {
+                        await Supabase.instance.client.auth.resetPasswordForEmail(email);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Tautan reset kata sandi telah dikirim ke email Anda!'),
+                              backgroundColor: AppTheme.successGreen,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          setDialogState(() => isSending = false);
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text('Gagal: $e'), backgroundColor: AppTheme.dangerRed),
+                          );
+                        }
+                      }
+                    },
+              child: const Text('Kirim Tautan'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -40,40 +126,48 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     });
 
     try {
-      await ref.read(authRepositoryProvider).signIn(
+      final user = await ref.read(authRepositoryProvider).signIn(
             email: _emailCtrl.text,
             password: _passwordCtrl.text,
           );
 
+      final profile = await ref
+          .read(currentProfileProvider.notifier)
+          .reload(user?.id);
+
       if (mounted) {
-        setState(() => _isSuccess = true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle_rounded, color: Colors.white),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Login berhasil! Mempersiapkan ruang belajar...',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+        if (profile != null) {
+          setState(() => _isSuccess = true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle_rounded, color: Colors.white),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Login berhasil! Mempersiapkan ruang belajar...',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              backgroundColor: Color(0xFF10B981),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
             ),
-            backgroundColor: Color(0xFF10B981),
-            duration: Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+          );
 
-      final profile = await ref.read(currentProfileProvider.notifier).refresh();
-
-      if (mounted && profile != null) {
-        final destination =
-            profile.role == UserRole.teacher ? '/teacher' : '/student';
-        context.go(destination);
+          final destination =
+              profile.role == UserRole.teacher ? '/teacher' : '/student';
+          context.go(destination);
+        } else {
+          setState(() {
+            _isLoading = false;
+            _isSuccess = false;
+            _error = 'Profil akun tidak ditemukan di server.';
+          });
+        }
       }
     } on AuthException catch (e) {
       if (mounted) {
@@ -122,9 +216,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: SegmentedButton<String>(
+                        showSelectedIcon: false,
                         segments: const [
-                          ButtonSegment(value: 'id', label: Text('ID')),
-                          ButtonSegment(value: 'en', label: Text('EN')),
+                          ButtonSegment(
+                            value: 'id',
+                            label: Text('ID', style: TextStyle(fontWeight: FontWeight.w700)),
+                          ),
+                          ButtonSegment(
+                            value: 'en',
+                            label: Text('EN', style: TextStyle(fontWeight: FontWeight.w700)),
+                          ),
                         ],
                         selected: {currentLocale.languageCode},
                         onSelectionChanged: (val) {
@@ -198,6 +299,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         }
                         return null;
                       },
+                    ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _showForgotPasswordDialog,
+                        child: const Text(
+                          'Lupa Kata Sandi?',
+                          style: TextStyle(
+                            color: AppTheme.primaryIndigo,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ),
                     ),
                     if (_error != null) ...[
                       const SizedBox(height: 12),

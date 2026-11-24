@@ -4,80 +4,152 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTheme {
   const AppTheme._();
 
-  static const Color primaryTeal = Color(0xFF1F7A94);
-  static const Color primaryDark = Color(0xFF145669);
-  static const Color secondaryAmber = Color(0xFFF59E0B);
-  static const Color successGreen = Color(0xFF16A34A);
-  static const Color warningOrange = Color(0xFFEA580C);
-  static const Color dangerRed = Color(0xFFDC2626);
-  static const Color surfaceBg = Color(0xFFF6F9FB);
-  static const Color buddyBubbleBg = Color(0xFFE7F4F8);
+  // Claymorphic Core Palette
+  static const Color clayCanvas = Color(0xFFFCF8FF); // Soft Lavender Tint
+  static const Color clayCard = Color(0xFFFFFFFF);
+  static const Color clayBorder = Color(0xFFE0E7FF); // Soft Indigo-Tinted Border
+  static const Color clayBorderSubtle = Color(0xFFF1F5F9);
+  
+  static const Color primaryIndigo = Color(0xFF4F46E5); // Indigo 600
+  static const Color primaryIndigoLight = Color(0xFFEEF2FF); // Indigo 50
+  static const Color accentOrange = Color(0xFFEA580C); // Warm Orange 600
+  static const Color accentOrangeLight = Color(0xFFFFF7ED); // Orange 50
+  
+  static const Color textPrimary = Color(0xFF0F172A); // Slate 900
+  static const Color textSecondary = Color(0xFF475569); // Slate 600
+  static const Color textMuted = Color(0xFF94A3B8); // Slate 400
+
+  static const Color successGreen = Color(0xFF10B981); // Emerald 500
+  static const Color successGreenLight = Color(0xFFECFDF5);
+  static const Color warningAmber = Color(0xFFF59E0B); // Amber 500
+  static const Color dangerRed = Color(0xFFEF4444); // Red 500
+  static const Color dangerRedLight = Color(0xFFFEF2F2);
+
+  // Backward compatibility aliases
+  static const Color primaryTeal = primaryIndigo;
+  static const Color primaryDark = textPrimary;
+  static const Color secondaryAmber = warningAmber;
+  static const Color warningOrange = accentOrange;
+  static const Color surfaceBg = clayCanvas;
+  static const Color buddyBubbleBg = Color(0xFFF3F4F6);
+  static const Color cardBorder = clayBorder;
+  static const Color darkCanvas = clayCanvas;
+  static const Color darkCard = clayCard;
+  static const Color darkBorder = clayBorder;
 
   static ThemeData light() {
     final base = ThemeData(
       useMaterial3: true,
+      brightness: Brightness.light,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryTeal,
-        primary: primaryTeal,
-        secondary: secondaryAmber,
-        surface: Colors.white,
+        seedColor: primaryIndigo,
+        brightness: Brightness.light,
+        primary: primaryIndigo,
+        secondary: accentOrange,
+        surface: clayCard,
+        surfaceContainerLowest: clayCanvas,
       ),
-      scaffoldBackgroundColor: surfaceBg,
+      scaffoldBackgroundColor: clayCanvas,
     );
 
     final fontFamily = GoogleFonts.plusJakartaSans().fontFamily;
     return base.copyWith(
-      textTheme: base.textTheme.apply(fontFamily: fontFamily),
+      textTheme: base.textTheme.apply(
+        fontFamily: fontFamily,
+        bodyColor: textPrimary,
+        displayColor: textPrimary,
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF102A36),
+        foregroundColor: textPrimary,
         elevation: 0,
-        scrolledUnderElevation: 1,
+        scrolledUnderElevation: 2,
+        shadowColor: const Color(0xFF1E1B4B).withValues(alpha: 0.05),
         centerTitle: false,
         titleTextStyle: GoogleFonts.plusJakartaSans(
           fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: const Color(0xFF102A36),
+          fontWeight: FontWeight.w800,
+          color: textPrimary,
         ),
+        iconTheme: const IconThemeData(color: textPrimary),
       ),
       cardTheme: CardThemeData(
-        color: Colors.white,
+        color: clayCard,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFFE2E8F0)),
+          borderRadius: BorderRadius.circular(22),
+          side: const BorderSide(
+            color: clayBorder,
+            width: 1.5,
+          ),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(color: clayBorder, width: 2),
+        ),
+        titleTextStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: textPrimary,
+        ),
+        contentTextStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 13.5,
+          color: textSecondary,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        hintStyle: const TextStyle(color: textMuted, fontSize: 13),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: clayBorder, width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: clayBorder, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: primaryTeal, width: 1.8),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: primaryIndigo, width: 2.0),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryTeal,
+          backgroundColor: primaryIndigo,
           foregroundColor: Colors.white,
           minimumSize: const Size(0, 48),
+          elevation: 2,
+          shadowColor: primaryIndigo.withValues(alpha: 0.35),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
           ),
           textStyle: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w700,
-            fontSize: 15,
+            fontSize: 14.5,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: primaryIndigo,
+          side: const BorderSide(color: clayBorder, width: 1.8),
+          minimumSize: const Size(0, 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          textStyle: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            fontSize: 14.5,
           ),
         ),
       ),
     );
   }
+
+  static ThemeData dark() => light(); // Maintain consistent claymorphic aesthetic
 }

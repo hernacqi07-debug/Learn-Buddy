@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/l10n/l10n_ext.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/buddy_avatar.dart';
-import '../../../core/widgets/meter_paham_bar.dart';
+import '../../../core/widgets/clay_widgets.dart';
 
 class RecapPage extends ConsumerStatefulWidget {
   const RecapPage({super.key, required this.sessionId});
@@ -49,11 +49,21 @@ class _RecapPageState extends ConsumerState<RecapPage> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final lang = ref.watch(languageProvider).languageCode;
-
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.recapTitle)),
+      backgroundColor: AppTheme.clayCanvas,
+      appBar: AppBar(
+        title: Text(
+          'Rekap Capaian Belajar',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () => context.go('/student'),
+        ),
+      ),
       body: FutureBuilder<(LearningSession, List<RecapMisconception>)>(
         future: _future,
         builder: (context, snapshot) {
@@ -64,7 +74,10 @@ class _RecapPageState extends ConsumerState<RecapPage> {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text(snapshot.error.toString()),
+                child: Text(
+                  snapshot.error.toString(),
+                  style: GoogleFonts.plusJakartaSans(color: AppTheme.dangerRed),
+                ),
               ),
             );
           }
@@ -73,37 +86,83 @@ class _RecapPageState extends ConsumerState<RecapPage> {
           final items = snapshot.data!.$2;
           final resolved = items.where((m) => m.isResolved).toList();
           final unresolved = items.where((m) => !m.isResolved).toList();
+          final isCompleted = session.meterPercent >= 80;
 
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
-                  child: Column(
-                    children: [
-                      BuddyAvatar(meterPercent: session.meterPercent, size: 84),
-                      const SizedBox(height: 12),
-                      Text(
-                        session.localizedTopicTitle(lang),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
+              // Main Summary Card
+              ClayCard(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    BuddyAvatar(
+                      mood: BuddyMood.fromMeter(session.meterPercent),
+                      size: 80,
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      session.localizedTopicTitle('id'),
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
                       ),
-                      const SizedBox(height: 6),
-                      _statusChip(context, session.status),
-                      const SizedBox(height: 14),
-                      MeterPahamBar(meterPercent: session.meterPercent),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 8),
+                    ClayPill(
+                      label: isCompleted ? 'Tuntas Paham (>=80%)' : 'Perlu Diperkuat',
+                      color: isCompleted ? AppTheme.successGreenLight : const Color(0xFFFEF3C7),
+                      textColor: isCompleted ? AppTheme.successGreen : const Color(0xFFB45309),
+                      icon: isCompleted ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Tingkat Pemahaman Buddy:',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                        Text(
+                          '${session.meterPercent}%',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: isCompleted ? AppTheme.successGreen : AppTheme.primaryIndigo,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClayProgressBar(
+                      progress: session.meterPercent / 100.0,
+                      height: 10,
+                      barColor: isCompleted ? AppTheme.successGreen : AppTheme.primaryIndigo,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '${session.studentInputs} Giliran Mengajar Diberikan',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12.5,
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
+
+              // Resolved Misconceptions
               if (resolved.isNotEmpty) ...[
                 Text(
-                  l10n.resolvedTitle,
-                  style: const TextStyle(
+                  'Konsep yang Berhasil Diluruskan',
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: AppTheme.successGreen,
@@ -111,109 +170,114 @@ class _RecapPageState extends ConsumerState<RecapPage> {
                 ),
                 const SizedBox(height: 8),
                 ...resolved.map(
-                  (m) => Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      leading: const Icon(
-                        Icons.check_circle_rounded,
-                        color: AppTheme.successGreen,
+                  (m) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: ClayCard(
+                      padding: const EdgeInsets.all(14),
+                      borderColor: const Color(0xFFA7F3D0),
+                      color: const Color(0xFFECFDF5),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle_rounded, color: AppTheme.successGreen, size: 22),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              m.localizedTitle('id'),
+                              style: GoogleFonts.plusJakartaSans(
+                                color: const Color(0xFF065F46),
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      title: Text(m.localizedTitle(session.language)),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
               ],
+
+              // Unresolved Misconceptions
               if (unresolved.isNotEmpty) ...[
                 Text(
-                  l10n.unresolvedTitle,
-                  style: const TextStyle(
+                  'Konsep yang Masih Perlu Diperkuat',
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.warningOrange,
+                    color: AppTheme.accentOrange,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  l10n.unresolvedNoHintNote,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
+                  'Buddy masih bingung di butir-butir ini. Coba ajari lagi dengan analogi baru.',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12.5,
+                    color: AppTheme.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 8),
                 ...unresolved.map(
-                  (m) => Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      leading: const Icon(
-                        Icons.radio_button_unchecked_rounded,
-                        color: AppTheme.warningOrange,
+                  (m) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: ClayCard(
+                      padding: const EdgeInsets.all(14),
+                      borderColor: const Color(0xFFFED7AA),
+                      color: const Color(0xFFFFF7ED),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.help_outline_rounded, color: AppTheme.accentOrange, size: 22),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              m.localizedTitle('id'),
+                              style: GoogleFonts.plusJakartaSans(
+                                color: const Color(0xFF9A3412),
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      // Title only, NO hints or answer keys!
-                      title: Text(m.localizedTitle(session.language)),
                     ),
                   ),
                 ),
+                const SizedBox(height: 20),
               ],
-              const SizedBox(height: 20),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(0, 48),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+
+              // Actions
+              ClayButton(
+                text: 'Baca Ulang Riwayat Chat',
+                isPrimary: false,
+                icon: Icons.chat_bubble_outline_rounded,
+                onPressed: () => context.push('/student/teach/${session.id}'),
+              ),
+              const SizedBox(height: 12),
+
+              ClayButton(
+                text: 'Coba Ajari Lagi (Sesi Baru)',
+                icon: Icons.replay_rounded,
+                onPressed: () => _retryTopic(session),
+              ),
+              const SizedBox(height: 12),
+
+              Center(
+                child: TextButton(
+                  onPressed: () => context.go('/student'),
+                  child: Text(
+                    'Kembali ke Beranda Utama',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textSecondary,
+                    ),
                   ),
                 ),
-                onPressed: () => context.push('/student/teach/${session.id}'),
-                icon: const Icon(Icons.chat_bubble_outline),
-                label: Text(l10n.historySectionTitle),
               ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: () => _retryTopic(session),
-                child: Text(l10n.tryAgainTopic),
-              ),
-              const SizedBox(height: 10),
-              TextButton(
-                onPressed: () => context.go('/student'),
-                child: Text(l10n.chooseOtherTopic),
-              ),
+              const SizedBox(height: 20),
             ],
           );
         },
-      ),
-    );
-  }
-
-  Widget _statusChip(BuildContext context, SessionStatus status) {
-    final l10n = context.l10n;
-    final (label, color) = switch (status) {
-      SessionStatus.completed => (
-          l10n.sessionStatusCompleted,
-          AppTheme.successGreen,
-        ),
-      SessionStatus.incomplete => (
-          l10n.sessionStatusIncomplete,
-          AppTheme.warningOrange,
-        ),
-      SessionStatus.abandoned => (
-          l10n.sessionStatusAbandoned,
-          const Color(0xFF64748B),
-        ),
-      SessionStatus.active => (
-          l10n.sessionStatusActive,
-          AppTheme.primaryTeal,
-        ),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12),
       ),
     );
   }

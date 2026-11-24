@@ -3,8 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/register_page.dart';
+import '../../features/settings/presentation/change_password_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
+import '../../features/student/announcements/announcements_page.dart';
+import '../../features/student/history/history_page.dart';
 import '../../features/student/home/student_home_page.dart';
+import '../../features/student/materi/materi_page.dart';
+import '../../features/student/quiz/quiz_page.dart';
 import '../../features/student/teach/chat_page.dart';
 import '../../features/student/teach/recap_page.dart';
 import '../../features/teacher/content/teacher_content_page.dart';
@@ -71,6 +76,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const StudentHomePage(),
       ),
       GoRoute(
+        path: '/student/materi/:topicId',
+        builder: (context, state) => MateriPage(
+          topicId: state.pathParameters['topicId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/student/quiz/:topicId',
+        builder: (context, state) => QuizPage(
+          topicId: state.pathParameters['topicId']!,
+          initialQuizType: state.uri.queryParameters['type'] ?? 'pre_test',
+        ),
+      ),
+      GoRoute(
+        path: '/student/announcements',
+        builder: (context, state) => const AnnouncementsPage(),
+      ),
+      GoRoute(
+        path: '/student/history',
+        builder: (context, state) => const HistoryPage(),
+      ),
+      GoRoute(
         path: '/student/teach/:sessionId',
         builder: (context, state) => ChatPage(
           sessionId: state.pathParameters['sessionId']!,
@@ -88,7 +114,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/teacher/content',
-        builder: (context, state) => const TeacherContentPage(),
+        builder: (context, state) => TeacherContentPage(
+          initialCourseId: state.uri.queryParameters['courseId'],
+        ),
       ),
       GoRoute(
         path: '/teacher/student/:studentId',
@@ -99,6 +127,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsPage(),
+      ),
+      GoRoute(
+        path: '/settings/change-password',
+        builder: (context, state) => const ChangePasswordPage(),
       ),
     ],
   );

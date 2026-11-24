@@ -5,11 +5,50 @@ class SessionRepository {
   SessionRepository(this._client);
   final SupabaseClient _client;
 
-  Future<List<TopicSummary>> getTopicsSummary() async {
-    final rows = await _client.rpc('get_student_topics_summary');
-    return (rows as List)
-        .map((e) => TopicSummary.fromMap(Map<String, dynamic>.from(e as Map)))
-        .toList();
+  Future<List<Course>> getCourses() async {
+    try {
+      final rows = await _client
+          .from('courses')
+          .select('*, profiles(display_name), topics(id)')
+          .eq('is_active', true)
+          .order('sort_order', ascending: true);
+
+      return (rows as List).map((e) {
+        final map = Map<String, dynamic>.from(e as Map);
+        final topics = map['topics'] as List? ?? [];
+        final teacherName =
+            (map['profiles'] as Map<String, dynamic>?)?['display_name']
+                as String?;
+        return Course.fromMap(
+          map,
+          topicCount: topics.length,
+          teacherName: teacherName,
+        );
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<TopicSummary>> getTopicsSummary({String? courseId}) async {
+    try {
+      final rows = await _client.rpc(
+        'get_student_topics_by_course',
+        params: courseId != null ? {'p_course_id': courseId} : {},
+      );
+      return (rows as List)
+          .map((e) => TopicSummary.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } catch (_) {
+      final rows = await _client.rpc('get_student_topics_summary');
+      final list = (rows as List)
+          .map((e) => TopicSummary.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+      if (courseId != null) {
+        return list.where((t) => t.courseId == courseId).toList();
+      }
+      return list;
+    }
   }
 
   Future<List<LearningSession>> getMySessions() async {
@@ -89,5 +128,104 @@ class SessionRepository {
           ),
         )
         .toList();
+  }
+
+  // --- Real Data: Assignments & Announcements ---
+  Future<List<Assignment>> getAssignments() async {
+    try {
+      final rows = await _client
+          .from('assignments')
+          .select('*, profiles(display_name), topics(title_id)')
+          .eq('is_active', true)
+          .order('created_at', ascending: false);
+      return (rows as List)
+          .map((e) => Assignment.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // --- Real Data: Topic Detail & Content ---
+  Future<TopicSummary?> getTopicDetail(String topicId) async {
+    try {
+      final row = await _client
+          .from('topics')
+          .select()
+          .eq('id', topicId)
+          .maybeSingle();
+      if (row == null) return null;
+      return TopicSummary.fromMap(Map<String, dynamic>.from(row as Map));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // --- Real Data: Questions & Quizzes ---
+  Future<List<Question>> getQuestions(String topicId, {String? quizType}) async {
+    try {
+      var query = _client.from('questions').select().eq('topic_id', topicId);
+      if (quizType != null) {
+        query = query.eq('quiz_type', quizType);
+      }
+      final rows = await query.order('sort_order', ascending: true);
+      return (rows as List)
+          .map((e) => Question.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<QuizAttempt> submitQuizAttempt({
+    required String topicId,
+    required String quizType,
+    required int score,
+    required int totalQuestions,
+    required Map<String, dynamic> answers,
+  }) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) throw Exception('User not logged in');
+
+    final data = {
+      'student_id': uid,
+      'topic_id': topicId,
+      'quiz_type': quizType,
+      'score': score,
+      'total_questions': totalQuestions,
+      'answers': answers,
+    };
+
+    final row = await _client
+        .from('quiz_attempts')
+        .insert(data)
+        .select()
+        .single();
+    return QuizAttempt.fromMap(Map<String, dynamic>.from(row as Map));
+  }
+
+  Future<List<QuizAttempt>> getQuizAttempts(String topicId) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return [];
+    try {
+      final rows = await _client
+          .from('quiz_attempts')
+          .select()
+          .eq('student_id', uid)
+          .eq('topic_id', topicId)
+          .order('created_at', ascending: false);
+      return (rows as List)
+          .map((e) => QuizAttempt.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // --- Real Data: User Account Security ---
+  Future<void> changePassword(String newPassword) async {
+    await _client.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
   }
 }

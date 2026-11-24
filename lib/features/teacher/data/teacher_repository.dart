@@ -5,9 +5,45 @@ class TeacherRepository {
   TeacherRepository(this._client);
   final SupabaseClient _client;
 
+  Future<List<Course>> getCourses() async {
+    try {
+      final rows = await _client
+          .from('courses')
+          .select('*, profiles(display_name), topics(id)')
+          .order('sort_order', ascending: true);
+
+      return (rows as List).map((e) {
+        final map = Map<String, dynamic>.from(e as Map);
+        final topics = map['topics'] as List? ?? [];
+        final teacherName =
+            (map['profiles'] as Map<String, dynamic>?)?['display_name']
+                as String?;
+        return Course.fromMap(
+          map,
+          topicCount: topics.length,
+          teacherName: teacherName,
+        );
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> assignTeacherToCourse({
+    required String courseId,
+    required String? teacherId,
+  }) async {
+    await _client
+        .from('courses')
+        .update({'teacher_id': teacherId})
+        .eq('id', courseId);
+  }
+
   /// Reads students and their session meters (NEVER accesses messages table).
   /// Sorted ascending by lowest/best meter so struggling students appear first.
-  Future<List<TeacherStudentSummary>> getStudentsProgress() async {
+  Future<List<TeacherStudentSummary>> getStudentsProgress({
+    String? courseId,
+  }) async {
     final studentsRaw = await _client
         .from('profiles')
         .select('id, display_name, email')
@@ -16,12 +52,17 @@ class TeacherRepository {
 
     final sessionsRaw = await _client
         .from('sessions')
-        .select('student_id, meter_percent, started_at')
+        .select('student_id, topic_id, meter_percent, started_at, topics(course_id)')
         .order('started_at', ascending: false);
 
     final sessionsByStudent = <String, List<Map<String, dynamic>>>{};
     for (final s in (sessionsRaw as List)) {
       final map = Map<String, dynamic>.from(s as Map);
+      if (courseId != null) {
+        final topicCourseId =
+            (map['topics'] as Map<String, dynamic>?)?['course_id'] as String?;
+        if (topicCourseId != courseId) continue;
+      }
       final sid = map['student_id'] as String;
       sessionsByStudent.putIfAbsent(sid, () => []).add(map);
     }
@@ -130,10 +171,22 @@ class TeacherRepository {
         .toList();
   }
 
-  Future<List<TeacherTopic>> getAllContent() async {
-    final [topicsRaw, miscRaw, criteriaRaw, sessionTopicsRaw] = await Future.wait([
-      _client.from('topics').select().order('sort_order', ascending: true),
-      _client.from('misconceptions').select().order('sort_order', ascending: true),
+  Future<List<TeacherTopic>> getAllContent({String? courseId}) async {
+    final topicQuery = courseId != null
+        ? _client
+            .from('topics')
+            .select()
+            .eq('course_id', courseId)
+            .order('sort_order', ascending: true)
+        : _client.from('topics').select().order('sort_order', ascending: true);
+
+    final [topicsRaw, miscRaw, criteriaRaw, sessionTopicsRaw] =
+        await Future.wait([
+      topicQuery,
+      _client
+          .from('misconceptions')
+          .select()
+          .order('sort_order', ascending: true),
       _client.from('criteria').select().order('sort_order', ascending: true),
       _client.from('sessions').select('topic_id'),
     ]);
@@ -171,6 +224,7 @@ class TeacherRepository {
 
   Future<void> saveTopic({
     String? id,
+    String? courseId,
     required String titleId,
     required String titleEn,
     required String descriptionId,
@@ -178,7 +232,7 @@ class TeacherRepository {
     required int sortOrder,
     required bool isActive,
   }) async {
-    final payload = {
+    final payload = <String, dynamic>{
       'title_id': titleId.trim(),
       'title_en': titleEn.trim(),
       'description_id': descriptionId.trim(),
@@ -186,6 +240,9 @@ class TeacherRepository {
       'sort_order': sortOrder,
       'is_active': isActive,
     };
+    if (courseId != null) {
+      payload['course_id'] = courseId;
+    }
     if (id == null) {
       final uid = _client.auth.currentUser?.id;
       await _client.from('topics').insert({...payload, 'created_by': uid});
@@ -295,5 +352,90 @@ class TeacherRepository {
       throw Exception('Translation failed (${res.status})');
     }
     return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  // --- Real Data: Tugas & Pengumuman Guru ---
+  Future<List<Assignment>> getTeacherAssignments() async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return [];
+    try {
+      final rows = await _client
+          .from('assignments')
+          .select('*, profiles(display_name), topics(title_id)')
+          .eq('teacher_id', uid)
+          .order('created_at', ascending: false);
+      return (rows as List)
+          .map((e) => Assignment.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> createAssignment({
+    required String title,
+    required String description,
+    required String type,
+    String? courseId,
+    String? topicId,
+    DateTime? dueDate,
+  }) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) throw Exception('Guru belum login');
+    await _client.from('assignments').insert({
+      'teacher_id': uid,
+      'course_id': courseId,
+      'topic_id': topicId,
+      'title': title.trim(),
+      'description': description.trim(),
+      'type': type,
+      'due_date': dueDate?.toIso8601String(),
+      'is_active': true,
+    });
+  }
+
+  Future<void> deleteAssignment(String assignmentId) async {
+    await _client.from('assignments').delete().eq('id', assignmentId);
+  }
+
+  // --- Real Data: Bank Soal & Evaluasi ---
+  Future<List<Question>> getTopicQuestions(String topicId) async {
+    try {
+      final rows = await _client
+          .from('questions')
+          .select()
+          .eq('topic_id', topicId)
+          .order('sort_order', ascending: true);
+      return (rows as List)
+          .map((e) => Question.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> createQuestion({
+    required String topicId,
+    required String quizType,
+    required String questionText,
+    String? codeSnippet,
+    required List<String> options,
+    required int correctIndex,
+    String? explanation,
+  }) async {
+    await _client.from('questions').insert({
+      'topic_id': topicId,
+      'quiz_type': quizType,
+      'question_text': questionText.trim(),
+      'code_snippet': codeSnippet?.trim(),
+      'options': options,
+      'correct_index': correctIndex,
+      'explanation': explanation?.trim(),
+      'sort_order': 1,
+    });
+  }
+
+  Future<void> deleteQuestion(String questionId) async {
+    await _client.from('questions').delete().eq('id', questionId);
   }
 }

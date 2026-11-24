@@ -6,25 +6,38 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 
 class TeacherContentPage extends ConsumerStatefulWidget {
-  const TeacherContentPage({super.key});
+  const TeacherContentPage({super.key, this.initialCourseId});
+  final String? initialCourseId;
 
   @override
   ConsumerState<TeacherContentPage> createState() => _TeacherContentPageState();
 }
 
 class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
-  late Future<List<TeacherTopic>> _future;
+  late Future<(List<Course>, List<TeacherTopic>)> _future;
+  String? _selectedCourseId;
   String? _translatingMiscId;
 
   @override
   void initState() {
     super.initState();
-    _future = ref.read(teacherRepositoryProvider).getAllContent();
+    _selectedCourseId = widget.initialCourseId;
+    _future = _load();
+  }
+
+  Future<(List<Course>, List<TeacherTopic>)> _load() async {
+    final repo = ref.read(teacherRepositoryProvider);
+    final courses = await repo.getCourses();
+    if (_selectedCourseId == null && courses.isNotEmpty) {
+      _selectedCourseId = courses.first.id;
+    }
+    final topics = await repo.getAllContent(courseId: _selectedCourseId);
+    return (courses, topics);
   }
 
   void _reload() {
     setState(() {
-      _future = ref.read(teacherRepositoryProvider).getAllContent();
+      _future = _load();
     });
   }
 
@@ -98,6 +111,7 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
                 }
                 await ref.read(teacherRepositoryProvider).saveTopic(
                       id: existing?.id,
+                      courseId: existing?.courseId ?? _selectedCourseId,
                       titleId: titleIdCtrl.text,
                       titleEn: titleEnCtrl.text,
                       descriptionId: descIdCtrl.text,
@@ -389,7 +403,7 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
           ),
         ],
       ),
-      body: FutureBuilder<List<TeacherTopic>>(
+      body: FutureBuilder<(List<Course>, List<TeacherTopic>)>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -399,21 +413,92 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
             return Center(child: Text(snapshot.error.toString()));
           }
 
-          final topics = snapshot.data ?? const [];
+          final courses = snapshot.data?.$1 ?? const [];
+          final topics = snapshot.data?.$2 ?? const [];
 
-          return ListView.builder(
+          return ListView(
             padding: const EdgeInsets.all(16),
-            itemCount: topics.length,
-            itemBuilder: (context, idx) {
-              final topic = topics[idx];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ExpansionTile(
-                  title: Text(
-                    '${topic.sortOrder}. ${topic.titleId}',
-                    style: const TextStyle(fontWeight: FontWeight.w800),
+            children: [
+              // Course Selector
+              if (courses.isNotEmpty) ...[
+                const Text(
+                  'Kelola Konten Untuk Mata Pelajaran:',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF64748B),
                   ),
-                  subtitle: Row(
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: courses.map((c) {
+                    final isCurrent = c.id == _selectedCourseId;
+                    return ChoiceChip(
+                      label: Text(
+                        c.titleId,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight:
+                              isCurrent ? FontWeight.w700 : FontWeight.w500,
+                          color: isCurrent
+                              ? Colors.white
+                              : const Color(0xFF334155),
+                        ),
+                      ),
+                      selected: isCurrent,
+                      selectedColor: AppTheme.primaryTeal,
+                      onSelected: (val) {
+                        if (val) {
+                          setState(() {
+                            _selectedCourseId = c.id;
+                            _future = _load();
+                          });
+                        }
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              if (topics.isEmpty)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.layers_clear_outlined,
+                            size: 40,
+                            color: Color(0xFF94A3B8),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Belum ada topik pada mata pelajaran ini.\nTekan tombol + di atas untuk menambahkan topik baru.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
+                ...topics.map((topic) {
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: ExpansionTile(
+                      title: Text(
+                        '${topic.sortOrder}. ${topic.titleId}',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      subtitle: Row(
                     children: [
                       Text(
                         topic.isActive ? l10n.activeLabel : l10n.inactiveLabel,
@@ -613,10 +698,11 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
                   ],
                 ),
               );
-            },
-          );
-        },
-      ),
-    );
-  }
+            }),
+          ],
+        );
+      },
+    ),
+  );
+}
 }

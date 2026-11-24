@@ -74,11 +74,12 @@ class CurrentProfileNotifier extends AsyncNotifier<UserProfile?> {
   @override
   Future<UserProfile?> build() async {
     final repo = ref.watch(authRepositoryProvider);
-    final sub = repo.authStateChanges.listen((event) {
+    final sub = repo.authStateChanges.listen((event) async {
       if (event.event == AuthChangeEvent.signedIn ||
           event.event == AuthChangeEvent.signedOut ||
           event.event == AuthChangeEvent.userUpdated) {
-        ref.invalidateSelf();
+        final p = await repo.fetchCurrentProfile();
+        setProfile(p);
       }
     });
     ref.onDispose(sub.cancel);
@@ -92,10 +93,24 @@ class CurrentProfileNotifier extends AsyncNotifier<UserProfile?> {
     return profile;
   }
 
-  Future<UserProfile?> refresh() async {
-    ref.invalidateSelf();
-    return future;
+  void setProfile(UserProfile? profile) {
+    if (profile != null) {
+      ref
+          .read(languageProvider.notifier)
+          .setLocaleLocalOnly(profile.languagePref);
+    }
+    state = AsyncData(profile);
   }
+
+  Future<UserProfile?> reload([String? explicitUid]) async {
+    state = const AsyncLoading();
+    final repo = ref.read(authRepositoryProvider);
+    final profile = await repo.fetchCurrentProfile(explicitUid);
+    setProfile(profile);
+    return profile;
+  }
+
+  Future<UserProfile?> refresh() => reload();
 }
 
 final currentProfileProvider =

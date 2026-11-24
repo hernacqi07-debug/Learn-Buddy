@@ -46,7 +46,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
     try {
       final lang = ref.read(languageProvider).languageCode;
-      await ref.read(authRepositoryProvider).signUp(
+      final newProfile = await ref.read(authRepositoryProvider).signUp(
             email: _emailCtrl.text,
             password: _passwordCtrl.text,
             displayName: _nameCtrl.text,
@@ -57,6 +57,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
       if (mounted) {
         setState(() => _isSuccess = true);
+        ref.read(currentProfileProvider.notifier).setProfile(newProfile);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -76,13 +77,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-      }
 
-      final profile = await ref.read(currentProfileProvider.notifier).refresh();
-
-      if (mounted && profile != null) {
         final destination =
-            profile.role == UserRole.teacher ? '/teacher' : '/student';
+            newProfile.role == UserRole.teacher ? '/teacher' : '/student';
         context.go(destination);
       }
     } on PostgrestException catch (e) {

@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/clay_widgets.dart';
 
+/// Beranda siswa — mengikuti layar "Beranda Dashboard (Blank)" di Stitch
+/// (Learn Buddy Claymorphic): kartu identitas besar, Ringkasan Progres,
+/// kartu AR 3D, grid Fitur Belajar 8 tile, kartu Latihan Soal Pre/Post-Test,
+/// dan kartu Topik Aktif. Angka-angka dihitung dari data asli Supabase,
+/// bukan angka contoh di mockup.
 class StudentHomePage extends ConsumerStatefulWidget {
   const StudentHomePage({super.key});
 
@@ -17,29 +22,22 @@ class StudentHomePage extends ConsumerStatefulWidget {
 }
 
 class _StudentHomePageState extends ConsumerState<StudentHomePage> {
-  String _studentAvatar = '👨‍🎓';
-
-  late Future<(List<Course>, List<TopicSummary>, List<LearningSession>, List<Assignment>)>
-      _loadFuture;
+  late Future<
+    (List<Course>, List<TopicSummary>, List<LearningSession>, List<Assignment>)
+  >
+  _loadFuture;
   String? _selectedCourseId;
 
   @override
   void initState() {
     super.initState();
     _loadFuture = _fetchData();
-    _loadStudentAvatar();
   }
 
-  Future<void> _loadStudentAvatar() async {
-    final prefs = await SharedPreferences.getInstance();
-    final av = prefs.getString('student_avatar');
-    if (av != null && mounted) {
-      setState(() => _studentAvatar = av);
-    }
-  }
-
-  Future<(List<Course>, List<TopicSummary>, List<LearningSession>, List<Assignment>)>
-      _fetchData() async {
+  Future<
+    (List<Course>, List<TopicSummary>, List<LearningSession>, List<Assignment>)
+  >
+  _fetchData() async {
     final repo = ref.read(sessionRepositoryProvider);
     final results = await Future.wait([
       repo.getCourses(),
@@ -62,7 +60,6 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
   }
 
   void _reload() {
-    _loadStudentAvatar();
     setState(() {
       _loadFuture = _fetchData();
     });
@@ -123,13 +120,15 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                 subtitle: !topic.enReady
                     ? Text(
                         l10n.enLockedNote,
-                        style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppTheme.textMuted),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: AppTheme.textMuted,
+                        ),
                       )
                     : null,
                 onChanged: (v) {
-                  if (v != null && topic.enReady) {
+                  if (v != null && topic.enReady)
                     setDialogState(() => selectedLang = v);
-                  }
                 },
               ),
             ],
@@ -139,7 +138,10 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
               onPressed: () => Navigator.pop(ctx),
               child: Text(
                 l10n.cancel,
-                style: GoogleFonts.plusJakartaSans(color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                style: GoogleFonts.plusJakartaSans(
+                  color: AppTheme.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             ClayButton(
@@ -172,7 +174,18 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
     }
   }
 
-  void _showProtegeGuideDialog() {
+  String _initials(String name) {
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return 'S';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+
+  void _showTopicsDialog(List<TopicSummary> topics) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -180,73 +193,64 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
           borderRadius: BorderRadius.circular(24),
           side: const BorderSide(color: AppTheme.clayBorder, width: 2),
         ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryIndigoLight,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.psychology_rounded, color: AppTheme.primaryIndigo),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Metode Protégé Effect',
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 17,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-            ),
-          ],
+        title: Text(
+          'Topik Struktur Data',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
+            color: AppTheme.textPrimary,
+          ),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Apa itu Protégé Effect?',
-              style: GoogleFonts.plusJakartaSans(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Protégé Effect adalah fenomena psikologi pendidikan di mana seseorang memahami suatu materi secara jauh lebih mendalam ketika ia mengajarkannya kepada orang lain.',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                color: AppTheme.textSecondary,
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'Peran Anda di Learn Buddy:',
-              style: GoogleFonts.plusJakartaSans(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Buddy adalah murid AI Anda yang sedang bingung dengan konsep Struktur Data. Jelaskan prinsip-prinsipnya dengan bahasa Anda sendiri, gunakan analogi riil, dan koreksi kekeliruan Buddy hingga meter pemahamannya mencapai 100%!',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                color: AppTheme.textSecondary,
-                height: 1.45,
-              ),
-            ),
-          ],
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: topics.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (ctx, i) {
+              final topic = topics[i];
+              return Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      topic.titleId,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: topic.bestMeterPercent >= 80
+                          ? AppTheme.successGreenLight
+                          : AppTheme.primaryIndigoLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${topic.bestMeterPercent}%',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12.5,
+                        color: topic.bestMeterPercent >= 80
+                            ? AppTheme.successGreen
+                            : AppTheme.primaryIndigo,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
         actions: [
           ClayButton(
-            text: 'Saya Paham, Siap Mengajar!',
+            text: 'Tutup',
             height: 44,
             onPressed: () => Navigator.pop(ctx),
           ),
@@ -258,6 +262,10 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(currentProfileProvider).value;
+    final displayName = (profile?.displayName ?? '').trim();
+    final firstName = displayName.isEmpty
+        ? 'Siswa'
+        : displayName.split(RegExp(r'\s+')).first;
 
     return Scaffold(
       backgroundColor: AppTheme.clayCanvas,
@@ -268,400 +276,857 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppTheme.primaryIndigoLight,
+                color: AppTheme.primaryIndigo,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.clayBorder, width: 1.5),
               ),
-              child: Center(
-                child: Text(_studentAvatar, style: const TextStyle(fontSize: 20)),
+              child: const Icon(
+                Icons.school_rounded,
+                color: Colors.white,
+                size: 22,
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Halo, ${profile?.displayName ?? 'Siswa'}! 👋',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    '${profile?.className ?? 'XI RPL'} · ${profile?.schoolName ?? 'SMK Negeri'}',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ],
+            const SizedBox(width: 10),
+            Text(
+              'Learn',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            Text(
+              'Buddy',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.primaryIndigo,
               ),
             ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: AppTheme.textPrimary),
-            onPressed: () => context.push('/settings'),
+            icon: const Icon(
+              Icons.notifications_outlined,
+              color: AppTheme.textPrimary,
+            ),
+            onPressed: () => context.push('/student/announcements'),
           ),
         ],
       ),
       body: RefreshIndicator(
         color: AppTheme.primaryIndigo,
         onRefresh: () async => _reload(),
-        child: FutureBuilder<(List<Course>, List<TopicSummary>, List<LearningSession>, List<Assignment>)>(
-          future: _loadFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Gagal memuat data: ${snapshot.error}',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.plusJakartaSans(color: AppTheme.dangerRed),
-                      ),
-                      const SizedBox(height: 12),
-                      ClayButton(
-                        text: 'Coba Lagi',
-                        onPressed: _reload,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            final (courses, topics, sessions, assignments) = snapshot.data!;
-            final currentTopic = topics.isNotEmpty
-                ? topics.first
-                : const TopicSummary(
-                    id: 'stack-default',
-                    titleId: 'Stack (Tumpukan)',
-                    titleEn: 'Stack',
-                    descriptionId: 'Struktur data LIFO untuk operasi Push dan Pop.',
-                    descriptionEn: 'LIFO data structure for push and pop operations.',
-                    sortOrder: 1,
-                    enReady: true,
-                    bestMeterPercent: 0,
-                    hasCompleted80: false,
-                  );
-
-            // Compute overall understanding progress
-            final int bestMeter = currentTopic.bestMeterPercent;
-
-            return ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              children: [
-                // 1. Progres Belajar Card (Tactile Claymorphic)
-                ClayCard(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child:
+            FutureBuilder<
+              (
+                List<Course>,
+                List<TopicSummary>,
+                List<LearningSession>,
+                List<Assignment>,
+              )
+            >(
+              future: _loadFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          Text(
+                            'Gagal memuat data: ${snapshot.error}',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.plusJakartaSans(
+                              color: AppTheme.dangerRed,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          ClayButton(text: 'Coba Lagi', onPressed: _reload),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                final topics = snapshot.data!.$2;
+            final sessions = snapshot.data!.$3;
+                final currentTopic = topics.isNotEmpty
+                    ? topics.first
+                    : const TopicSummary(
+                        id: 'stack-default',
+                        titleId: 'Stack (Tumpukan)',
+                        titleEn: 'Stack',
+                        descriptionId:
+                            'Struktur data LIFO untuk operasi Push dan Pop.',
+                        descriptionEn:
+                            'LIFO data structure for push and pop operations.',
+                        sortOrder: 1,
+                        enReady: true,
+                        bestMeterPercent: 0,
+                        hasCompleted80: false,
+                      );
+
+                // Ringkasan Progres dari data asli.
+                final completedSessions = sessions
+                    .where((s) => s.status == SessionStatus.completed)
+                    .length;
+                final avgMeter = topics.isEmpty
+                    ? 0
+                    : (topics.fold<int>(
+                                0,
+                                (sum, t) => sum + t.bestMeterPercent,
+                              ) /
+                              topics.length)
+                          .round();
+                final topicsDone = topics.where((t) => t.hasCompleted80).length;
+                final bestMeter = currentTopic.bestMeterPercent;
+
+                return ListView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  children: [
+                    // 1. Kartu identitas (diperbesar, seperti di Stitch).
+                    ClayCard(
+                      padding: const EdgeInsets.all(24),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Halo, $firstName! 👋',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  displayName.isEmpty
+                                      ? 'Siswa Learn Buddy'
+                                      : displayName,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.primaryIndigo,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Siap eksplorasi keahlian coding hari ini?',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    height: 1.35,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Stack(
+                            clipBehavior: Clip.none,
                             children: [
-                              Text(
-                                'Progres Belajar: Struktur Data',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 16,
-                                  color: AppTheme.textPrimary,
+                              Container(
+                                width: 72,
+                                height: 72,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: AppTheme.primaryIndigo,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  _initials(displayName),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Topik Aktif: ${currentTopic.titleId}',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
-                                  color: AppTheme.textSecondary,
+                              Positioned(
+                                right: -2,
+                                bottom: -2,
+                                child: Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: AppTheme.accentOrange,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.local_fire_department_rounded,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: bestMeter >= 80 ? AppTheme.successGreenLight : AppTheme.primaryIndigoLight,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: bestMeter >= 80 ? AppTheme.successGreen : AppTheme.primaryIndigo,
-                                width: 1.2,
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // 2. Ringkasan Progres.
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.insights_rounded,
+                              size: 20,
+                              color: AppTheme.primaryIndigo,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Ringkasan Progres',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textPrimary,
                               ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          'Minggu Ini',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildStatCard(
+                            '$completedSessions',
+                            'Sesi Selesai',
+                            AppTheme.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatCard(
+                            '$avgMeter%',
+                            'Rata-rata Meter',
+                            AppTheme.primaryIndigo,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildStatCardRich(topicsDone, topics.length),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // 3. Kartu AR 3D (tombol menampilkan "segera hadir" — AR belum diimplementasi).
+                    ClayCard(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryIndigoLight,
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              '$bestMeter% Paham',
+                              '✨ Fitur Unggulan 3D',
                               style: GoogleFonts.plusJakartaSans(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                                color: bestMeter >= 80 ? AppTheme.successGreen : AppTheme.primaryIndigo,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.primaryIndigo,
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      ClayProgressBar(
-                        progress: bestMeter / 100.0,
-                        height: 10,
-                        barColor: bestMeter >= 80 ? AppTheme.successGreen : AppTheme.primaryIndigo,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ClayButton(
-                              text: bestMeter > 0 ? 'Lanjutkan Mengajar' : 'Mulai Mengajar Buddy',
-                              icon: Icons.chat_bubble_rounded,
-                              onPressed: () => _startNewSessionDialog(currentTopic),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // 2. Section Header: 8 Fitur Belajar
-                Text(
-                  'Fitur Pembelajaran Siswa',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // 8 Fitur Belajar Clay Buttons Grid (2 columns)
-                GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.45,
-                  children: [
-                    _buildFeatureCard(
-                      title: 'Modul Materi',
-                      subtitle: 'Teori & analogi LIFO',
-                      icon: Icons.menu_book_rounded,
-                      iconBg: const Color(0xFFEEF2FF),
-                      iconColor: AppTheme.primaryIndigo,
-                      onTap: () => context.push('/student/materi/${currentTopic.id}'),
-                    ),
-                    _buildFeatureCard(
-                      title: 'Kuis Pemahaman',
-                      subtitle: 'Evaluasi konsep Stack',
-                      icon: Icons.quiz_rounded,
-                      iconBg: const Color(0xFFFEF3C7),
-                      iconColor: const Color(0xFFB45309),
-                      onTap: () => context.push('/student/quiz/${currentTopic.id}?type=post_test'),
-                    ),
-                    _buildFeatureCard(
-                      title: 'Riwayat Sesi',
-                      subtitle: '${sessions.length} sesi mengajar',
-                      icon: Icons.history_rounded,
-                      iconBg: const Color(0xFFECFDF5),
-                      iconColor: const Color(0xFF047857),
-                      onTap: () => context.push('/student/history'),
-                    ),
-                    _buildFeatureCard(
-                      title: 'Papan Tugas',
-                      subtitle: '${assignments.length} tugas aktif',
-                      icon: Icons.campaign_rounded,
-                      iconBg: const Color(0xFFFFF7ED),
-                      iconColor: AppTheme.accentOrange,
-                      onTap: () => context.push('/student/announcements'),
-                    ),
-                    _buildFeatureCard(
-                      title: 'Ruang AI Buddy',
-                      subtitle: 'Bimbing murid AI',
-                      icon: Icons.smart_toy_rounded,
-                      iconBg: const Color(0xFFF3E8FF),
-                      iconColor: const Color(0xFF7E22CE),
-                      onTap: () => _startNewSessionDialog(currentTopic),
-                    ),
-                    _buildFeatureCard(
-                      title: 'Panduan Protégé',
-                      subtitle: 'Belajar lewat mengajar',
-                      icon: Icons.psychology_rounded,
-                      iconBg: const Color(0xFFE0F2FE),
-                      iconColor: const Color(0xFF0369A1),
-                      onTap: _showProtegeGuideDialog,
-                    ),
-                    _buildFeatureCard(
-                      title: 'Pre-Test Awal',
-                      subtitle: 'Uji pemahaman dasar',
-                      icon: Icons.assignment_turned_in_rounded,
-                      iconBg: const Color(0xFFFCE7F3),
-                      iconColor: const Color(0xFFBE185D),
-                      onTap: () => context.push('/student/quiz/${currentTopic.id}?type=pre_test'),
-                    ),
-                    _buildFeatureCard(
-                      title: 'Pengaturan Akun',
-                      subtitle: 'Profil & sandi akun',
-                      icon: Icons.tune_rounded,
-                      iconBg: const Color(0xFFF1F5F9),
-                      iconColor: const Color(0xFF475569),
-                      onTap: () => context.push('/settings'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // 3. Tugas Terbaru dari Guru (Real Data)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Tugas & Pengumuman Guru',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => context.push('/student/announcements'),
-                      child: Text(
-                        'Lihat Semua',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: AppTheme.primaryIndigo,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                if (assignments.isEmpty)
-                  ClayCard(
-                    padding: const EdgeInsets.all(16),
-                    child: Center(
-                      child: Text(
-                        'Belum ada tugas baru yang diberikan.',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: AppTheme.textSecondary,
-                          fontSize: 13.5,
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  ...assignments.take(2).map((item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: ClayCard(
-                          padding: const EdgeInsets.all(16),
-                          onTap: () => context.push('/student/announcements'),
-                          child: Row(
+                          const SizedBox(height: 12),
+                          Row(
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryIndigoLight,
-                                  borderRadius: BorderRadius.circular(12),
+                              Expanded(
+                                child: Text(
+                                  'Eksplorasi AR 3D',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.textPrimary,
+                                  ),
                                 ),
-                                child: const Icon(Icons.assignment_rounded, color: AppTheme.primaryIndigo),
                               ),
-                              const SizedBox(width: 14),
+                              Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryIndigo,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Icon(
+                                  Icons.view_in_ar_rounded,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ClayButton(
+                              text: 'Buka Mode AR 3D',
+                              icon: Icons.view_in_ar_rounded,
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Mode AR 3D segera hadir — masih tahap pengembangan.',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    backgroundColor: AppTheme.primaryIndigo,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // 4. Fitur Belajar — grid 8 tile.
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.apps_rounded,
+                              size: 20,
+                              color: AppTheme.primaryIndigo,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Fitur Belajar',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryIndigoLight,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '8 Menu',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.primaryIndigo,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    GridView.count(
+                      crossAxisCount: 4,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                      childAspectRatio: 0.78,
+                      children: [
+                        _buildFeatureTile(
+                          label: 'Chat Buddy',
+                          icon: Icons.chat_bubble_rounded,
+                          iconBg: const Color(0xFFEEF2FF),
+                          onTap: () => _startNewSessionDialog(currentTopic),
+                        ),
+                        _buildFeatureTile(
+                          label: 'Materi',
+                          icon: Icons.menu_book_rounded,
+                          iconBg: const Color(0xFFFFF7ED),
+                          onTap: () => context.push(
+                            '/student/materi/${currentTopic.id}',
+                          ),
+                        ),
+                        _buildFeatureTile(
+                          label: 'Latihan Soal',
+                          icon: Icons.assignment_turned_in_rounded,
+                          iconBg: const Color(0xFFFEF9C3),
+                          onTap: () => context.push(
+                            '/student/quiz/${currentTopic.id}?type=pre_test',
+                          ),
+                        ),
+                        _buildFeatureTile(
+                          label: 'Rekap',
+                          icon: Icons.analytics_rounded,
+                          iconBg: const Color(0xFFDCFCE7),
+                          onTap: () => context.push('/student/history'),
+                        ),
+                        _buildFeatureTile(
+                          label: 'Topik',
+                          icon: Icons.layers_rounded,
+                          iconBg: const Color(0xFFE0F2FE),
+                          onTap: () => _showTopicsDialog(topics),
+                        ),
+                        _buildFeatureTile(
+                          label: 'Riwayat',
+                          icon: Icons.history_rounded,
+                          iconBg: const Color(0xFFF3E8FF),
+                          onTap: () => context.push('/student/history'),
+                        ),
+                        _buildFeatureTile(
+                          label: 'Pengumuman',
+                          icon: Icons.campaign_rounded,
+                          iconBg: const Color(0xFFFCE7F3),
+                          onTap: () => context.push('/student/announcements'),
+                        ),
+                        _buildFeatureTile(
+                          label: 'AR 3D',
+                          icon: Icons.view_in_ar_rounded,
+                          iconBg: const Color(0xFFEEF2FF),
+                          iconColor: AppTheme.accentOrange,
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Mode AR 3D segera hadir — masih tahap pengembangan.',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                backgroundColor: AppTheme.primaryIndigo,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // 5. Latihan Soal — Pre-Test & Post-Test.
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.quiz_rounded,
+                              size: 20,
+                              color: AppTheme.primaryIndigo,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Latihan Soal',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryIndigoLight,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'Topik: ${currentTopic.titleId}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.primaryIndigo,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ClayCard(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => context.push(
+                              '/student/quiz/${currentTopic.id}?type=pre_test',
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryIndigoLight,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: const Icon(
+                                    Icons.play_lesson_rounded,
+                                    color: AppTheme.primaryIndigo,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Pre-Test',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppTheme.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '5 soal • Sebelum belajar',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12.5,
+                                          color: AppTheme.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                ClayButton(
+                                  text: 'Mulai',
+                                  height: 40,
+                                  onPressed: () => context.push(
+                                    '/student/quiz/${currentTopic.id}?type=pre_test',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Divider(height: 28, color: AppTheme.clayBorder),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => context.push(
+                              '/student/quiz/${currentTopic.id}?type=post_test',
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: const Icon(
+                                    Icons.task_alt_rounded,
+                                    color: AppTheme.textSecondary,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Post-Test',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppTheme.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '5 soal • Setelah belajar',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12.5,
+                                          color: AppTheme.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.lock_rounded,
+                                        size: 13,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Selesaikan Pre-Test dulu',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // 6. Topik Aktif — meter + lanjutkan/mulai mengajar Buddy.
+                    ClayCard(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      item.title,
+                                      'Topik Aktif: ${currentTopic.titleId}',
                                       style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 14.5,
                                         fontWeight: FontWeight.w800,
+                                        fontSize: 16,
                                         color: AppTheme.textPrimary,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      item.teacherName ?? 'Pak Hendra, S.Kom',
+                                      'Struktur Data',
                                       style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12.5,
+                                        fontSize: 13,
                                         color: AppTheme.textSecondary,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppTheme.textMuted),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: bestMeter >= 80
+                                      ? AppTheme.successGreenLight
+                                      : AppTheme.primaryIndigoLight,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: bestMeter >= 80
+                                        ? AppTheme.successGreen
+                                        : AppTheme.primaryIndigo,
+                                    width: 1.2,
+                                  ),
+                                ),
+                                child: Text(
+                                  '$bestMeter% Paham',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                    color: bestMeter >= 80
+                                        ? AppTheme.successGreen
+                                        : AppTheme.primaryIndigo,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
-                        ),
-                      )),
-
-                const SizedBox(height: 20),
-              ],
-            );
-          },
-        ),
+                          const SizedBox(height: 16),
+                          ClayProgressBar(
+                            progress: bestMeter / 100.0,
+                            height: 10,
+                            barColor: bestMeter >= 80
+                                ? AppTheme.successGreen
+                                : AppTheme.primaryIndigo,
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ClayButton(
+                              text: bestMeter > 0
+                                  ? 'Lanjutkan Mengajar'
+                                  : 'Mulai Mengajar Buddy',
+                              icon: Icons.chat_bubble_rounded,
+                              onPressed: () =>
+                                  _startNewSessionDialog(currentTopic),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                );
+              },
+            ),
       ),
     );
   }
 
-  Widget _buildFeatureCard({
-    required String title,
-    required String subtitle,
+  Widget _buildStatCard(String value, String label, Color valueColor) {
+    return ClayCard(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      borderRadius: 20,
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: valueColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCardRich(int done, int total) {
+    return ClayCard(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      borderRadius: 20,
+      child: Column(
+        children: [
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: '$done',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.accentOrange,
+                  ),
+                ),
+                TextSpan(
+                  text: '/$total',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Topik Tuntas',
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureTile({
+    required String label,
     required IconData icon,
     required Color iconBg,
-    required Color iconColor,
+    Color iconColor = AppTheme.primaryIndigo,
     required VoidCallback onTap,
   }) {
     return ClayCard(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      borderRadius: 20,
       onTap: onTap,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: iconBg,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: iconColor, size: 20),
+            child: Icon(icon, color: iconColor, size: 24),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
-            title,
+            label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: AppTheme.textMuted,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
             ),
           ),
         ],

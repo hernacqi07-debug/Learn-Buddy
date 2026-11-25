@@ -54,6 +54,7 @@ class UserProfile {
     this.nisn,
     this.className,
     this.schoolName,
+    this.avatarUrl,
   });
 
   final String id;
@@ -64,6 +65,7 @@ class UserProfile {
   final String? nisn;
   final String? className;
   final String? schoolName;
+  final String? avatarUrl;
 
   factory UserProfile.fromMap(Map<String, dynamic> map) {
     return UserProfile(
@@ -75,6 +77,7 @@ class UserProfile {
       nisn: map['nisn'] as String?,
       className: map['class_name'] as String?,
       schoolName: map['school_name'] as String?,
+      avatarUrl: map['avatar_url'] as String?,
     );
   }
 }
@@ -484,6 +487,7 @@ class TeacherStudentSummary {
     required this.sessionCount,
     required this.lowestOrBestMeter,
     required this.latestMeter,
+    this.avatarUrl,
   });
 
   final String studentId;
@@ -492,6 +496,7 @@ class TeacherStudentSummary {
   final int sessionCount;
   final int lowestOrBestMeter;
   final int latestMeter;
+  final String? avatarUrl;
 }
 
 class TeacherSessionCriterionItem {

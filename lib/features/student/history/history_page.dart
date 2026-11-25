@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
@@ -32,12 +33,15 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final lang = ref.watch(languageProvider).languageCode;
+
     return Scaffold(
       backgroundColor: AppTheme.clayCanvas,
       bottomNavigationBar: const StudentBottomNav(currentIndex: 1),
       appBar: AppBar(
         title: Text(
-          'Riwayat Sesi Belajar',
+          l10n.historyPageTitle,
           style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w800,
             fontSize: 18,
@@ -63,7 +67,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
           if (snapshot.hasError) {
             return Center(
               child: Text(
-                'Terjadi kesalahan: ${snapshot.error}',
+                l10n.failedToLoad(snapshot.error.toString()),
                 style: GoogleFonts.plusJakartaSans(color: AppTheme.dangerRed),
               ),
             );
@@ -80,7 +84,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                     const Icon(Icons.history_toggle_off_rounded, size: 52, color: AppTheme.textMuted),
                     const SizedBox(height: 12),
                     Text(
-                      'Belum ada riwayat sesi mengajar Buddy.',
+                      l10n.noHistoryYet,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -99,7 +103,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
             separatorBuilder: (_, _) => const SizedBox(height: 14),
             itemBuilder: (context, index) {
               final session = sessions[index];
-              return _buildSessionCard(session);
+              return _buildSessionCard(session, lang);
             },
           );
         },
@@ -107,7 +111,8 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     );
   }
 
-  Widget _buildSessionCard(LearningSession session) {
+  Widget _buildSessionCard(LearningSession session, String lang) {
+    final l10n = context.l10n;
     final bool isCompleted = session.status == SessionStatus.completed;
     final bool isActive = session.status == SessionStatus.active;
 
@@ -118,15 +123,15 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     if (isCompleted) {
       badgeBg = const Color(0xFFECFDF5);
       badgeText = const Color(0xFF047857);
-      statusText = 'Selesai Paham';
+      statusText = l10n.sessionFinishedUnderstood;
     } else if (isActive) {
       badgeBg = const Color(0xFFEEF2FF);
       badgeText = AppTheme.primaryIndigo;
-      statusText = 'Sedang Berjalan';
+      statusText = l10n.sessionRunning;
     } else {
       badgeBg = const Color(0xFFFFF7ED);
       badgeText = const Color(0xFFC2410C);
-      statusText = 'Belum Tuntas';
+      statusText = l10n.sessionIncomplete;
     }
 
     final formattedDate =
@@ -190,7 +195,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      session.localizedTopicTitle('id'),
+                      session.localizedTopicTitle(lang),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
@@ -199,7 +204,10 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${session.studentInputs} Giliran Mengajar Buddy · Bahasa: ${session.language.toUpperCase()}',
+                      l10n.teachingTurnsLang(
+                        session.studentInputs,
+                        session.language.toUpperCase(),
+                      ),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         color: AppTheme.textSecondary,
@@ -216,7 +224,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
             children: [
               if (isActive)
                 ClayButton(
-                  text: 'Lanjutkan Sesi',
+                  text: l10n.continueSession,
                   height: 40,
                   onPressed: () {
                     context.push('/student/teach/${session.id}');
@@ -224,7 +232,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                 )
               else
                 ClayButton(
-                  text: 'Lihat Evaluasi & Rekap',
+                  text: l10n.viewEvalRecapBtn,
                   isPrimary: false,
                   height: 40,
                   onPressed: () {

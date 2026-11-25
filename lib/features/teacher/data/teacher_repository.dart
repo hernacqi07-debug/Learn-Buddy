@@ -46,7 +46,7 @@ class TeacherRepository {
   }) async {
     final studentsRaw = await _client
         .from('profiles')
-        .select('id, display_name, email')
+        .select('*')
         .eq('role', 'student')
         .order('display_name', ascending: true);
 
@@ -89,6 +89,7 @@ class TeacherRepository {
           sessionCount: list.length,
           lowestOrBestMeter: list.isEmpty ? 0 : best,
           latestMeter: latest,
+          avatarUrl: m['avatar_url'] as String?,
         ),
       );
     }

@@ -117,3 +117,20 @@ final currentProfileProvider =
     AsyncNotifierProvider<CurrentProfileNotifier, UserProfile?>(
       CurrentProfileNotifier.new,
     );
+
+class LocalAvatarPathNotifier extends AsyncNotifier<String?> {
+  @override
+  Future<String?> build() async {
+    ref.watch(currentProfileProvider);
+    return ref.read(authRepositoryProvider).getLocalAvatarPath();
+  }
+
+  void setPath(String? path) {
+    state = AsyncData(path);
+  }
+}
+
+final localAvatarPathProvider =
+    AsyncNotifierProvider<LocalAvatarPathNotifier, String?>(
+      LocalAvatarPathNotifier.new,
+    );

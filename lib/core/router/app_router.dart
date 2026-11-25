@@ -6,6 +6,8 @@ import '../../features/auth/presentation/register_page.dart';
 import '../../features/settings/presentation/change_password_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/student/announcements/announcements_page.dart';
+import '../../features/student/ar/ar_page.dart';
+import '../../features/student/chat_hub/student_chat_hub_page.dart';
 import '../../features/student/history/history_page.dart';
 import '../../features/student/home/student_home_page.dart';
 import '../../features/student/materi/materi_page.dart';
@@ -74,6 +76,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/student',
         builder: (context, state) => const StudentHomePage(),
+      ),
+      GoRoute(
+        path: '/student/chat',
+        builder: (context, state) => const StudentChatHubPage(),
+      ),
+      GoRoute(
+        path: '/student/ar',
+        builder: (context, state) => const ArPage(),
       ),
       GoRoute(
         path: '/student/materi/:topicId',

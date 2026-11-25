@@ -33,6 +33,7 @@ class StudentBottomNav extends ConsumerWidget {
     if (profile != null && profile.role != UserRole.student) {
       return const SizedBox.shrink();
     }
+    final l10n = context.l10n;
 
     return Container(
       decoration: const BoxDecoration(
@@ -50,13 +51,15 @@ class StudentBottomNav extends ConsumerWidget {
             children: [
               _NavItem(
                 icon: Icons.chat_bubble_rounded,
-                label: 'Chat',
+                label: l10n.navChat,
                 active: currentIndex == 0,
-                onTap: () => _onChatTap(context, ref),
+                onTap: () {
+                  if (currentIndex != 0) context.go('/student/chat');
+                },
               ),
               _NavItem(
                 icon: Icons.home_rounded,
-                label: 'Beranda',
+                label: l10n.navHome,
                 active: currentIndex == 1,
                 onTap: () {
                   if (currentIndex != 1) context.go('/student');
@@ -64,7 +67,7 @@ class StudentBottomNav extends ConsumerWidget {
               ),
               _NavItem(
                 icon: Icons.settings_rounded,
-                label: 'Pengaturan',
+                label: l10n.navSettings,
                 active: currentIndex == 2,
                 onTap: () {
                   if (currentIndex != 2) context.go('/settings');
@@ -75,11 +78,6 @@ class StudentBottomNav extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _onChatTap(BuildContext context, WidgetRef ref) async {
-    await startTeachingSession(context, ref);
-    onReturnFromChat?.call();
   }
 }
 

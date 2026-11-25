@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
@@ -42,11 +43,13 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
 
   Future<void> _startSession(TopicSummary topic) async {
     setState(() => _isStartingSession = true);
+    final appLang = ref.read(languageProvider).languageCode;
+    final sessionLang = (appLang == 'en' && topic.enReady) ? 'en' : 'id';
     try {
       final repo = ref.read(sessionRepositoryProvider);
       final session = await repo.startSession(
         topicId: topic.id,
-        language: 'id',
+        language: sessionLang,
       );
       if (mounted) {
         context.push('/student/teach/${session.id}');
@@ -55,7 +58,7 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal memulai sesi: $e'),
+            content: Text(context.l10n.startSessionFailed(e.toString())),
             backgroundColor: AppTheme.dangerRed,
           ),
         );
@@ -69,12 +72,16 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final lang = ref.watch(languageProvider).languageCode;
+    final isEn = lang == 'en';
+
     return Scaffold(
       backgroundColor: AppTheme.clayCanvas,
       bottomNavigationBar: const StudentBottomNav(currentIndex: 1),
       appBar: AppBar(
         title: Text(
-          'Modul Materi',
+          l10n.studyModuleTitle,
           style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w800,
             fontSize: 18,
@@ -89,7 +96,7 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
             icon: const Icon(Icons.share_outlined),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Tautan modul disalin ke papan klip!')),
+                SnackBar(content: Text(l10n.moduleLinkCopied)),
               );
             },
           ),
@@ -105,7 +112,7 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
           if (topic == null) {
             return Center(
               child: Text(
-                'Data materi tidak ditemukan',
+                l10n.moduleNotFound,
                 style: GoogleFonts.plusJakartaSans(
                   color: AppTheme.textSecondary,
                   fontSize: 15,
@@ -126,15 +133,15 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
                     children: [
                       Row(
                         children: [
-                          const ClayPill(
-                            label: 'Struktur Data Dasar',
+                          ClayPill(
+                            label: l10n.basicDataStructuresBadge,
                             color: AppTheme.primaryIndigoLight,
                             textColor: AppTheme.primaryIndigo,
                             icon: Icons.layers_rounded,
                           ),
                           const Spacer(),
                           ClayPill(
-                            label: '${topic.readingTimeMinutes} Menit Baca',
+                            label: l10n.readingTimeMinutes(topic.readingTimeMinutes),
                             color: const Color(0xFFFEF3C7),
                             textColor: const Color(0xFFB45309),
                             icon: Icons.timer_outlined,
@@ -143,7 +150,7 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        topic.titleId,
+                        topic.localizedTitle(lang),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
@@ -152,7 +159,7 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        topic.descriptionId,
+                        topic.localizedDesc(lang),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13.5,
                           color: AppTheme.textSecondary,
@@ -194,10 +201,10 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
                       fontWeight: FontWeight.w700,
                       fontSize: 13,
                     ),
-                    tabs: const [
-                      Tab(text: 'Teori Dasar'),
-                      Tab(text: 'Analogi Riil'),
-                      Tab(text: 'Contoh Kode'),
+                    tabs: [
+                      Tab(text: l10n.tabBasicTheory),
+                      Tab(text: l10n.tabRealAnalogy),
+                      Tab(text: l10n.tabCodeExample),
                     ],
                   ),
                 ),
@@ -209,11 +216,11 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
                   controller: _tabController,
                   children: [
                     // Tab 1: Teori Dasar
-                    _buildTheoryTab(topic),
+                    _buildTheoryTab(topic, isEn),
                     // Tab 2: Analogi Riil
-                    _buildAnalogyTab(topic),
+                    _buildAnalogyTab(topic, isEn),
                     // Tab 3: Contoh Kode
-                    _buildCodeTab(topic),
+                    _buildCodeTab(topic, l10n.codeCopied),
                   ],
                 ),
               ),
@@ -231,7 +238,7 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
                   children: [
                     Expanded(
                       child: ClayButton(
-                        text: 'Mulai Mengajar Buddy',
+                        text: l10n.startTeachingBuddy,
                         icon: Icons.chat_bubble_rounded,
                         isLoading: _isStartingSession,
                         onPressed: () => _startSession(topic),
@@ -247,9 +254,14 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
     );
   }
 
-  Widget _buildTheoryTab(TopicSummary topic) {
-    final theory = topic.theoryContent ??
-        'Stack (Tumpukan) adalah struktur data linier yang mengikuti prinsip LIFO (Last In, First Out). Elemen yang paling terakhir ditambahkan akan menjadi elemen pertama yang dikeluarkan.';
+  Widget _buildTheoryTab(TopicSummary topic, bool isEn) {
+    final l10n = context.l10n;
+    final defaultTheory = isEn
+        ? 'A Stack is a linear data structure that follows the LIFO (Last In, First Out) principle. The element added most recently is the first one to be removed.'
+        : 'Stack (Tumpukan) adalah struktur data linier yang mengikuti prinsip LIFO (Last In, First Out). Elemen yang paling terakhir ditambahkan akan menjadi elemen pertama yang dikeluarkan.';
+    final theory = (!isEn && topic.theoryContent != null)
+        ? topic.theoryContent!
+        : defaultTheory;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -264,7 +276,7 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
                   const Icon(Icons.menu_book_rounded, color: AppTheme.primaryIndigo, size: 22),
                   const SizedBox(width: 10),
                   Text(
-                    'Konsep Utama Stack',
+                    l10n.mainConceptTitle,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
@@ -296,7 +308,7 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
                   const Icon(Icons.checklist_rounded, color: AppTheme.successGreen, size: 22),
                   const SizedBox(width: 10),
                   Text(
-                    'Operasi Pokok Stack',
+                    l10n.coreOperationsTitle,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
@@ -306,15 +318,45 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
                 ],
               ),
               const SizedBox(height: 14),
-              _buildOpItem('PUSH(x)', 'Menambahkan elemen baru ke posisi paling atas (top).', Icons.arrow_downward_rounded),
+              _buildOpItem(
+                'PUSH(x)',
+                isEn
+                    ? 'Adds a new element to the top of the stack.'
+                    : 'Menambahkan elemen baru ke posisi paling atas (top).',
+                Icons.arrow_downward_rounded,
+              ),
               const SizedBox(height: 10),
-              _buildOpItem('POP()', 'Mengambil dan menghapus elemen dari posisi paling atas.', Icons.arrow_upward_rounded),
+              _buildOpItem(
+                'POP()',
+                isEn
+                    ? 'Removes and returns the element from the top of the stack.'
+                    : 'Mengambil dan menghapus elemen dari posisi paling atas.',
+                Icons.arrow_upward_rounded,
+              ),
               const SizedBox(height: 10),
-              _buildOpItem('PEEK() / TOP()', 'Melihat elemen teratas tanpa menghapusnya.', Icons.visibility_rounded),
+              _buildOpItem(
+                'PEEK() / TOP()',
+                isEn
+                    ? 'Views the top element without removing it.'
+                    : 'Melihat elemen teratas tanpa menghapusnya.',
+                Icons.visibility_rounded,
+              ),
               const SizedBox(height: 10),
-              _buildOpItem('isEmpty()', 'Mengecek apakah tumpukan sedang kosong.', Icons.check_circle_outline_rounded),
+              _buildOpItem(
+                'isEmpty()',
+                isEn
+                    ? 'Checks whether the stack is currently empty.'
+                    : 'Mengecek apakah tumpukan sedang kosong.',
+                Icons.check_circle_outline_rounded,
+              ),
               const SizedBox(height: 10),
-              _buildOpItem('isFull()', 'Mengecek kondisi tumpukan penuh (kapasitas terlampaui).', Icons.warning_amber_rounded),
+              _buildOpItem(
+                'isFull()',
+                isEn
+                    ? 'Checks whether the stack is full (capacity exceeded).'
+                    : 'Mengecek kondisi tumpukan penuh (kapasitas terlampaui).',
+                Icons.warning_amber_rounded,
+              ),
             ],
           ),
         ),
@@ -372,9 +414,14 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
     );
   }
 
-  Widget _buildAnalogyTab(TopicSummary topic) {
-    final analogy = topic.analogyContent ??
-        'Bayangkan tumpukan piring bersih di meja prasmanan kantin sekolah. Piring yang pertama kali dicuci dan ditaruh di bawah akan menjadi yang terakhir diambil (LIFO).';
+  Widget _buildAnalogyTab(TopicSummary topic, bool isEn) {
+    final l10n = context.l10n;
+    final defaultAnalogy = isEn
+        ? 'Imagine a stack of clean plates at a cafeteria counter. The plate washed first and placed at the bottom will be the last one picked up (LIFO).'
+        : 'Bayangkan tumpukan piring bersih di meja prasmanan kantin sekolah. Piring yang pertama kali dicuci dan ditaruh di bawah akan menjadi yang terakhir diambil (LIFO).';
+    final analogy = (!isEn && topic.analogyContent != null)
+        ? topic.analogyContent!
+        : defaultAnalogy;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -391,7 +438,7 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
                   const Icon(Icons.lightbulb_rounded, color: AppTheme.accentOrange, size: 24),
                   const SizedBox(width: 10),
                   Text(
-                    'Analogi Dunia Nyata',
+                    l10n.realWorldAnalogyTitle,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
@@ -419,7 +466,7 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Contoh Aplikasi Nyata dalam Pemrograman:',
+                l10n.realAppsExamplesTitle,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
@@ -428,20 +475,26 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
               ),
               const SizedBox(height: 12),
               _buildOpItem(
-                'Fitur Undo / Redo (Ctrl+Z)',
-                'Setiap ketikan disimpan ke Stack. Ketika Ctrl+Z ditekan, operasi terakhir di-POP.',
+                isEn ? 'Undo / Redo Feature (Ctrl+Z)' : 'Fitur Undo / Redo (Ctrl+Z)',
+                isEn
+                    ? 'Every keystroke is pushed to a Stack. Pressing Ctrl+Z pops the last operation.'
+                    : 'Setiap ketikan disimpan ke Stack. Ketika Ctrl+Z ditekan, operasi terakhir di-POP.',
                 Icons.undo_rounded,
               ),
               const SizedBox(height: 10),
               _buildOpItem(
-                'Tombol Back pada Web Browser',
-                'Riwayat URL ditumpuk ke Stack history navigasi browser.',
+                isEn ? 'Web Browser Back Button' : 'Tombol Back pada Web Browser',
+                isEn
+                    ? 'Visited URLs are stacked onto the browser navigation history.'
+                    : 'Riwayat URL ditumpuk ke Stack history navigasi browser.',
                 Icons.arrow_back_rounded,
               ),
               const SizedBox(height: 10),
               _buildOpItem(
-                'Call Stack Pemanggilan Fungsi',
-                'Ketika fungsi rekursif dipanggil, alamat memori disimpan di Call Stack sistem.',
+                isEn ? 'Function Call Stack' : 'Call Stack Pemanggilan Fungsi',
+                isEn
+                    ? 'When a recursive function is called, memory addresses are stored in the system Call Stack.'
+                    : 'Ketika fungsi rekursif dipanggil, alamat memori disimpan di Call Stack sistem.',
                 Icons.call_split_rounded,
               ),
             ],
@@ -451,7 +504,7 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
     );
   }
 
-  Widget _buildCodeTab(TopicSummary topic) {
+  Widget _buildCodeTab(TopicSummary topic, String codeCopiedMsg) {
     final code = topic.codeSnippet ??
 '''class Stack<T> {
   final List<T> _items = [];
@@ -510,7 +563,7 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: code));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Kode berhasil disalin!')),
+                        SnackBar(content: Text(codeCopiedMsg)),
                       );
                     },
                   ),

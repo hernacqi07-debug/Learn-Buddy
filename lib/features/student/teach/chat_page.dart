@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
@@ -163,12 +164,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       if (!mounted) return;
       setState(() {
         _sending = false;
-        _sendError = 'Gagal menghubungi Buddy. Coba lagi dalam beberapa saat.';
+        _sendError = context.l10n.buddyTimeoutError;
       });
     }
   }
 
   Future<void> _confirmEndSession() async {
+    final l10n = context.l10n;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -189,7 +191,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Akhiri Sesi Belajar?',
+                l10n.endSessionModalTitle,
                 style: GoogleFonts.plusJakartaSans(
                   fontWeight: FontWeight.w800,
                   fontSize: 18,
@@ -204,7 +206,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Apakah Anda yakin ingin menyelesaikan sesi mengajar ini?',
+              l10n.endSessionModalQuestion,
               style: GoogleFonts.plusJakartaSans(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
@@ -213,7 +215,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Sistem akan menyusun Rekap Capaian & Evaluasi Pemahaman berdasarkan konsep yang telah Anda ajarkan kepada Buddy.',
+              l10n.endSessionModalDesc,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
                 color: AppTheme.textSecondary,
@@ -226,12 +228,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(
-              'Lanjutkan Belajar',
+              l10n.continueLearningBtn,
               style: GoogleFonts.plusJakartaSans(color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
             ),
           ),
           ClayButton(
-            text: 'Akhiri & Lihat Rekap',
+            text: l10n.endAndViewRecapBtn,
             height: 44,
             onPressed: () => Navigator.pop(ctx, true),
           ),
@@ -247,6 +249,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 
   void _showRubricCriteriaModal() {
+    final l10n = context.l10n;
+    final isEn = ref.read(languageProvider).languageCode == 'en';
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -267,7 +271,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     const Icon(Icons.checklist_rounded, color: AppTheme.primaryIndigo, size: 22),
                     const SizedBox(width: 8),
                     Text(
-                      'Rubrik Penilaian AI Buddy',
+                      l10n.rubricModalTitle,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
@@ -284,18 +288,18 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             ),
             const SizedBox(height: 10),
             Text(
-              'Ajarkan dan jelaskan poin-poin berikut agar Buddy paham sepenuhnya:',
+              l10n.rubricModalDesc,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
                 color: AppTheme.textSecondary,
               ),
             ),
             const SizedBox(height: 14),
-            _buildRubricItem('Prinsip LIFO (Last In, First Out)'),
-            _buildRubricItem('Operasi PUSH (Menambahkan data ke posisi Top)'),
-            _buildRubricItem('Operasi POP (Mengambil data dari posisi Top)'),
-            _buildRubricItem('Operasi PEEK / TOP (Melihat elemen puncak)'),
-            _buildRubricItem('Kondisi Stack Underflow & Overflow'),
+            _buildRubricItem(isEn ? 'LIFO Principle (Last In, First Out)' : 'Prinsip LIFO (Last In, First Out)'),
+            _buildRubricItem(isEn ? 'PUSH Operation (Add data to Top)' : 'Operasi PUSH (Menambahkan data ke posisi Top)'),
+            _buildRubricItem(isEn ? 'POP Operation (Remove data from Top)' : 'Operasi POP (Mengambil data dari posisi Top)'),
+            _buildRubricItem(isEn ? 'PEEK / TOP Operation (View top element)' : 'Operasi PEEK / TOP (Melihat elemen puncak)'),
+            _buildRubricItem(isEn ? 'Stack Underflow & Overflow Conditions' : 'Kondisi Stack Underflow & Overflow'),
             const SizedBox(height: 16),
           ],
         ),
@@ -327,6 +331,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final lang = ref.watch(languageProvider).languageCode;
+    final isEn = lang == 'en';
+
     if (_loading) {
       return const Scaffold(
         backgroundColor: AppTheme.clayCanvas,
@@ -344,11 +352,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _loadError ?? 'Sesi belajar tidak ditemukan',
+                  _loadError ?? l10n.sessionNotFound,
                   style: GoogleFonts.plusJakartaSans(color: AppTheme.dangerRed),
                 ),
                 const SizedBox(height: 12),
-                ClayButton(text: 'Coba Lagi', onPressed: _load),
+                ClayButton(text: l10n.retry, onPressed: _load),
               ],
             ),
           ),
@@ -376,7 +384,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Buddy (Murid AI)',
+                    l10n.buddyAiLabel,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w800,
@@ -384,7 +392,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     ),
                   ),
                   Text(
-                    '${session.localizedTopicTitle('id')} · $meter% Paham',
+                    '${session.localizedTopicTitle(lang)} · ${l10n.understoodBadge(meter)}',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -399,7 +407,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.checklist_rounded, color: AppTheme.primaryIndigo),
-            tooltip: 'Lihat Kriteria Penilaian',
+            tooltip: l10n.viewCriteriaTooltip,
             onPressed: _showRubricCriteriaModal,
           ),
           if (isActive)
@@ -408,7 +416,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               child: TextButton(
                 onPressed: _confirmEndSession,
                 child: Text(
-                  'Selesai',
+                  l10n.finishBtn,
                   style: GoogleFonts.plusJakartaSans(
                     fontWeight: FontWeight.w800,
                     color: AppTheme.accentOrange,
@@ -430,7 +438,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Tingkat Pemahaman Buddy',
+                      l10n.buddyUnderstandingLabel,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -480,7 +488,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
                   const SizedBox(width: 8),
                   Text(
-                    'Buddy sedang mengetik & mencerna penjelasanmu...',
+                    l10n.buddyTypingHint,
                     style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppTheme.textMuted),
                   ),
                 ],
@@ -508,7 +516,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 itemCount: _quickPrompts.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (context, idx) {
-                  final prompt = _quickPrompts[idx];
+                  final promptsEn = [
+                    'Imagine dirty plates washed last are placed on top — which plate gets picked first?',
+                    'If the stack is empty and we force taking data out, what is that called, Bud?',
+                    'Right! Now think of the Back button in an internet browser too!',
+                  ];
+                  final prompt = isEn ? promptsEn[idx] : _quickPrompts[idx];
                   return GestureDetector(
                     onTap: () => _sendMessage(prompt),
                     child: Container(
@@ -553,12 +566,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       child: TextField(
                         controller: _inputCtrl,
                         maxLength: _maxChars,
-                        decoration: const InputDecoration(
-                          hintText: 'Jelaskan konsep kepada Buddy...',
+                        decoration: InputDecoration(
+                          hintText: l10n.messageHint,
                           border: InputOrigin.none,
                           enabledBorder: InputOrigin.none,
                           focusedBorder: InputOrigin.none,
-                          contentPadding: EdgeInsets.symmetric(vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
                           counterText: '',
                         ),
                         onSubmitted: (_) => _sendMessage(),
@@ -595,7 +608,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               padding: const EdgeInsets.all(16),
               color: Colors.white,
               child: ClayButton(
-                text: 'Lihat Rekap Sesi Ini',
+                text: l10n.viewThisRecapBtn,
                 onPressed: () => context.pushReplacement('/student/recap/${widget.sessionId}'),
               ),
             ),

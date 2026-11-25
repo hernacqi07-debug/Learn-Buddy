@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
@@ -50,12 +51,15 @@ class _RecapPageState extends ConsumerState<RecapPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final lang = ref.watch(languageProvider).languageCode;
+
     return Scaffold(
       backgroundColor: AppTheme.clayCanvas,
       bottomNavigationBar: const StudentBottomNav(currentIndex: 1),
       appBar: AppBar(
         title: Text(
-          'Rekap Capaian Belajar',
+          l10n.recapPageTitle,
           style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w800,
             fontSize: 18,
@@ -104,7 +108,7 @@ class _RecapPageState extends ConsumerState<RecapPage> {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      session.localizedTopicTitle('id'),
+                      session.localizedTopicTitle(lang),
                       textAlign: TextAlign.center,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 20,
@@ -114,7 +118,7 @@ class _RecapPageState extends ConsumerState<RecapPage> {
                     ),
                     const SizedBox(height: 8),
                     ClayPill(
-                      label: isCompleted ? 'Tuntas Paham (>=80%)' : 'Perlu Diperkuat',
+                      label: isCompleted ? l10n.recapCompletedBadge : l10n.recapNeedsWorkBadge,
                       color: isCompleted ? AppTheme.successGreenLight : const Color(0xFFFEF3C7),
                       textColor: isCompleted ? AppTheme.successGreen : const Color(0xFFB45309),
                       icon: isCompleted ? Icons.check_circle_rounded : Icons.info_outline_rounded,
@@ -124,7 +128,7 @@ class _RecapPageState extends ConsumerState<RecapPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Tingkat Pemahaman Buddy:',
+                          '${l10n.buddyUnderstandingLabel}:',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -149,7 +153,7 @@ class _RecapPageState extends ConsumerState<RecapPage> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      '${session.studentInputs} Giliran Mengajar Diberikan',
+                      l10n.teachingTurnsGiven(session.studentInputs),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12.5,
                         color: AppTheme.textMuted,
@@ -163,7 +167,7 @@ class _RecapPageState extends ConsumerState<RecapPage> {
               // Resolved Misconceptions
               if (resolved.isNotEmpty) ...[
                 Text(
-                  'Konsep yang Berhasil Diluruskan',
+                  l10n.resolvedConceptsTitle,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
@@ -184,7 +188,7 @@ class _RecapPageState extends ConsumerState<RecapPage> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              m.localizedTitle('id'),
+                              m.localizedTitle(lang),
                               style: GoogleFonts.plusJakartaSans(
                                 color: const Color(0xFF065F46),
                                 fontSize: 13.5,
@@ -203,7 +207,7 @@ class _RecapPageState extends ConsumerState<RecapPage> {
               // Unresolved Misconceptions
               if (unresolved.isNotEmpty) ...[
                 Text(
-                  'Konsep yang Masih Perlu Diperkuat',
+                  l10n.unresolvedConceptsTitle,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
@@ -212,7 +216,7 @@ class _RecapPageState extends ConsumerState<RecapPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Buddy masih bingung di butir-butir ini. Coba ajari lagi dengan analogi baru.',
+                  l10n.unresolvedConceptsHint,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12.5,
                     color: AppTheme.textSecondary,
@@ -232,7 +236,7 @@ class _RecapPageState extends ConsumerState<RecapPage> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              m.localizedTitle('id'),
+                              m.localizedTitle(lang),
                               style: GoogleFonts.plusJakartaSans(
                                 color: const Color(0xFF9A3412),
                                 fontSize: 13.5,
@@ -250,7 +254,7 @@ class _RecapPageState extends ConsumerState<RecapPage> {
 
               // Actions
               ClayButton(
-                text: 'Baca Ulang Riwayat Chat',
+                text: l10n.rereadChatBtn,
                 isPrimary: false,
                 icon: Icons.chat_bubble_outline_rounded,
                 onPressed: () => context.push('/student/teach/${session.id}'),
@@ -258,7 +262,7 @@ class _RecapPageState extends ConsumerState<RecapPage> {
               const SizedBox(height: 12),
 
               ClayButton(
-                text: 'Coba Ajari Lagi (Sesi Baru)',
+                text: l10n.teachAgainBtn,
                 icon: Icons.replay_rounded,
                 onPressed: () => _retryTopic(session),
               ),
@@ -268,7 +272,7 @@ class _RecapPageState extends ConsumerState<RecapPage> {
                 child: TextButton(
                   onPressed: () => context.go('/student'),
                   child: Text(
-                    'Kembali ke Beranda Utama',
+                    l10n.backToHomeBtn,
                     style: GoogleFonts.plusJakartaSans(
                       fontWeight: FontWeight.w700,
                       color: AppTheme.textSecondary,

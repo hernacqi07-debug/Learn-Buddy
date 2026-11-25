@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/clay_widgets.dart';
@@ -29,15 +30,16 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
   }
 
   Future<void> _submitChangePassword() async {
+    final l10n = context.l10n;
     final newPass = _newPassController.text.trim();
     final confirmPass = _confirmPassController.text.trim();
 
     if (newPass.length < 6) {
-      setState(() => _errorMessage = 'Kata sandi minimal 6 karakter.');
+      setState(() => _errorMessage = l10n.passwordMin6Error);
       return;
     }
     if (newPass != confirmPass) {
-      setState(() => _errorMessage = 'Konfirmasi kata sandi tidak cocok.');
+      setState(() => _errorMessage = l10n.passwordMismatchError);
       return;
     }
 
@@ -52,8 +54,8 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Kata sandi berhasil diubah!'),
+          SnackBar(
+            content: Text(l10n.passwordChangedMsg),
             backgroundColor: AppTheme.successGreen,
           ),
         );
@@ -61,7 +63,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _errorMessage = 'Gagal mengubah kata sandi: $e');
+        setState(() => _errorMessage = l10n.passwordChangeError(e.toString()));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -70,11 +72,12 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppTheme.clayCanvas,
       appBar: AppBar(
         title: Text(
-          'Ubah Kata Sandi',
+          l10n.changePasswordTitle,
           style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w800,
             fontSize: 18,
@@ -106,7 +109,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Keamanan Akun',
+                        l10n.accountSecurityTitle,
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
@@ -118,7 +121,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Masukkan kata sandi baru untuk akun Anda. Pastikan kata sandi kuat dan tidak mudah ditebak.',
+                  l10n.changePasswordDesc,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13.5,
                     color: AppTheme.textSecondary,
@@ -155,8 +158,8 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
                 ],
                 ClayTextField(
                   controller: _newPassController,
-                  label: 'Kata Sandi Baru',
-                  hint: 'Minimal 6 karakter',
+                  label: l10n.newPasswordLabel,
+                  hint: l10n.minCharsHint,
                   obscureText: _obscureNew,
                   prefixIcon: Icons.lock_outline_rounded,
                   suffixIcon: IconButton(
@@ -170,8 +173,8 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
                 const SizedBox(height: 16),
                 ClayTextField(
                   controller: _confirmPassController,
-                  label: 'Konfirmasi Kata Sandi Baru',
-                  hint: 'Ulangi kata sandi baru',
+                  label: l10n.confirmPasswordLabel,
+                  hint: l10n.repeatPasswordHint,
                   obscureText: _obscureConfirm,
                   prefixIcon: Icons.lock_outline_rounded,
                   suffixIcon: IconButton(
@@ -184,7 +187,7 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
                 ),
                 const SizedBox(height: 24),
                 ClayButton(
-                  text: 'Simpan Kata Sandi Baru',
+                  text: l10n.saveNewPasswordBtn,
                   isLoading: _isLoading,
                   onPressed: _submitChangePassword,
                 ),

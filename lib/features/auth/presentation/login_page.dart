@@ -32,6 +32,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void _showForgotPasswordDialog() {
+    final l10n = context.l10n;
     final resetEmailCtrl = TextEditingController(text: _emailCtrl.text);
     bool isSending = false;
 
@@ -43,9 +44,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             borderRadius: BorderRadius.circular(22),
             side: const BorderSide(color: AppTheme.clayBorder, width: 2),
           ),
-          title: const Text(
-            'Reset Kata Sandi',
-            style: TextStyle(
+          title: Text(
+            l10n.resetPasswordTitle,
+            style: const TextStyle(
               fontWeight: FontWeight.w800,
               fontSize: 17,
               color: AppTheme.textPrimary,
@@ -55,9 +56,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Masukkan email akun Anda. Kami akan mengirimkan tautan pemulihan kata sandi ke kotak masuk Anda.',
-                style: TextStyle(
+              Text(
+                l10n.resetPasswordDesc,
+                style: const TextStyle(
                   fontSize: 13,
                   color: AppTheme.textSecondary,
                   height: 1.4,
@@ -67,9 +68,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               TextField(
                 controller: resetEmailCtrl,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Email Akun',
-                  prefixIcon: Icon(Icons.email_outlined),
+                decoration: InputDecoration(
+                  labelText: l10n.accountEmailLabel,
+                  prefixIcon: const Icon(Icons.email_outlined),
                 ),
               ),
             ],
@@ -77,9 +78,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text(
-                'Batal',
-                style: TextStyle(color: AppTheme.textSecondary),
+              child: Text(
+                l10n.cancel,
+                style: const TextStyle(color: AppTheme.textSecondary),
               ),
             ),
             ElevatedButton(
@@ -94,8 +95,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         if (ctx.mounted) Navigator.pop(ctx);
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Tautan reset kata sandi telah dikirim ke email Anda!'),
+                            SnackBar(
+                              content: Text(l10n.resetLinkSentMsg),
                               backgroundColor: AppTheme.successGreen,
                             ),
                           );
@@ -104,12 +105,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         if (ctx.mounted) {
                           setDialogState(() => isSending = false);
                           ScaffoldMessenger.of(ctx).showSnackBar(
-                            SnackBar(content: Text('Gagal: $e'), backgroundColor: AppTheme.dangerRed),
+                            SnackBar(content: Text('$e'), backgroundColor: AppTheme.dangerRed),
                           );
                         }
                       }
                     },
-              child: const Text('Kirim Tautan'),
+              child: Text(l10n.sendLinkBtn),
             ),
           ],
         ),
@@ -305,9 +306,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: _showForgotPasswordDialog,
-                        child: const Text(
-                          'Lupa Kata Sandi?',
-                          style: TextStyle(
+                        child: Text(
+                          l10n.forgotPasswordLink,
+                          style: const TextStyle(
                             color: AppTheme.primaryIndigo,
                             fontWeight: FontWeight.w700,
                             fontSize: 12.5,

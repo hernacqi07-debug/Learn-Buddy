@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/clay_widgets.dart';
 import '../../../core/widgets/student_bottom_nav.dart';
+import '../../../core/widgets/user_avatar.dart';
 
 /// Beranda siswa — mengikuti layar "Beranda Dashboard (Blank)" di Stitch
 /// (Learn Buddy Claymorphic): kartu identitas besar, Ringkasan Progres,
@@ -87,18 +89,9 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
     }
   }
 
-  String _initials(String name) {
-    final parts = name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((p) => p.isNotEmpty)
-        .toList();
-    if (parts.isEmpty) return 'S';
-    if (parts.length == 1) return parts.first[0].toUpperCase();
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-
   void _showTopicsDialog(List<TopicSummary> topics) {
+    final lang = ref.read(languageProvider).languageCode;
+    final l10n = context.l10n;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -107,7 +100,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
           side: const BorderSide(color: AppTheme.clayBorder, width: 2),
         ),
         title: Text(
-          'Topik Struktur Data',
+          l10n.topicsSectionTitle,
           style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w800,
             fontSize: 18,
@@ -126,7 +119,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                 children: [
                   Expanded(
                     child: Text(
-                      topic.titleId,
+                      topic.localizedTitle(lang),
                       style: GoogleFonts.plusJakartaSans(
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
@@ -163,7 +156,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
         ),
         actions: [
           ClayButton(
-            text: 'Tutup',
+            text: l10n.close,
             height: 44,
             onPressed: () => Navigator.pop(ctx),
           ),
@@ -175,9 +168,12 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(currentProfileProvider).value;
+    final lang = ref.watch(languageProvider).languageCode;
+    final isEn = lang == 'en';
+    final l10n = context.l10n;
     final displayName = (profile?.displayName ?? '').trim();
     final firstName = displayName.isEmpty
-        ? 'Siswa'
+        ? l10n.roleStudent
         : displayName.split(RegExp(r'\s+')).first;
 
     return Scaffold(
@@ -222,6 +218,53 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
           ],
         ),
         actions: [
+          Consumer(
+            builder: (context, ref, _) {
+              final currentLocale = ref.watch(languageProvider);
+              final isId = currentLocale.languageCode == 'id';
+              return GestureDetector(
+                onTap: () {
+                  final next = isId ? 'en' : 'id';
+                  ref.read(languageProvider.notifier).setLanguage(next);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        next == 'en'
+                            ? 'Beralih ke Bahasa Inggris (English)'
+                            : 'Beralih ke Bahasa Indonesia',
+                      ),
+                      duration: const Duration(seconds: 1),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryIndigoLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.clayBorder, width: 1.2),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(isId ? '🇮🇩' : '🇬🇧', style: const TextStyle(fontSize: 14)),
+                      const SizedBox(width: 4),
+                      Text(
+                        isId ? 'ID' : 'EN',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          color: AppTheme.primaryIndigo,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(
               Icons.notifications_outlined,
@@ -256,14 +299,14 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            'Gagal memuat data: ${snapshot.error}',
+                            l10n.failedToLoad(snapshot.error.toString()),
                             textAlign: TextAlign.center,
                             style: GoogleFonts.plusJakartaSans(
                               color: AppTheme.dangerRed,
                             ),
                           ),
                           const SizedBox(height: 12),
-                          ClayButton(text: 'Coba Lagi', onPressed: _reload),
+                          ClayButton(text: l10n.retry, onPressed: _reload),
                         ],
                       ),
                     ),
@@ -319,7 +362,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Halo, $firstName! 👋',
+                                  l10n.welcomeUser(firstName),
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w800,
@@ -329,7 +372,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                                 const SizedBox(height: 2),
                                 Text(
                                   displayName.isEmpty
-                                      ? 'Siswa Learn Buddy'
+                                      ? (isEn ? 'Learn Buddy Student' : 'Siswa Learn Buddy')
                                       : displayName,
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 15,
@@ -339,7 +382,9 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  'Siap eksplorasi keahlian coding hari ini?',
+                                  isEn
+                                      ? 'Ready to explore coding skills today?'
+                                      : 'Siap eksplorasi keahlian coding hari ini?',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 14,
                                     height: 1.35,
@@ -350,48 +395,40 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
-                                width: 72,
-                                height: 72,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppTheme.primaryIndigo,
+                          GestureDetector(
+                            onTap: () => context.go('/settings'),
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                UserAvatar(
+                                  localPath: ref.watch(localAvatarPathProvider).value,
+                                  avatarUrl: profile?.avatarUrl,
+                                  displayName: displayName,
+                                  size: 72,
                                 ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  _initials(displayName),
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                right: -2,
-                                bottom: -2,
-                                child: Container(
-                                  width: 24,
-                                  height: 24,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: AppTheme.accentOrange,
-                                    border: Border.all(
+                                Positioned(
+                                  right: -2,
+                                  bottom: -2,
+                                  child: Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: AppTheme.accentOrange,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.local_fire_department_rounded,
+                                      size: 14,
                                       color: Colors.white,
-                                      width: 2,
                                     ),
                                   ),
-                                  child: const Icon(
-                                    Icons.local_fire_department_rounded,
-                                    size: 14,
-                                    color: Colors.white,
-                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -411,7 +448,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Ringkasan Progres',
+                              isEn ? 'Progress Summary' : 'Ringkasan Progres',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
@@ -421,7 +458,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                           ],
                         ),
                         Text(
-                          'Minggu Ini',
+                          isEn ? 'This Week' : 'Minggu Ini',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
@@ -436,7 +473,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                         Expanded(
                           child: _buildStatCard(
                             '$completedSessions',
-                            'Sesi Selesai',
+                            isEn ? 'Completed Sessions' : 'Sesi Selesai',
                             AppTheme.textPrimary,
                           ),
                         ),
@@ -444,13 +481,17 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                         Expanded(
                           child: _buildStatCard(
                             '$avgMeter%',
-                            'Rata-rata Meter',
+                            isEn ? 'Average Meter' : 'Rata-rata Meter',
                             AppTheme.primaryIndigo,
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _buildStatCardRich(topicsDone, topics.length),
+                          child: _buildStatCardRich(
+                            topicsDone,
+                            topics.length,
+                            isEn ? 'Mastered Topics' : 'Topik Tuntas',
+                          ),
                         ),
                       ],
                     ),
@@ -472,7 +513,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              '✨ Fitur Unggulan 3D',
+                              isEn ? '✨ 3D Featured Mode' : '✨ Fitur Unggulan 3D',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -485,7 +526,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  'Eksplorasi AR 3D',
+                                  isEn ? 'Explore 3D AR' : 'Eksplorasi AR 3D',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 17,
                                     fontWeight: FontWeight.w800,
@@ -512,21 +553,9 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                           SizedBox(
                             width: double.infinity,
                             child: ClayButton(
-                              text: 'Buka Mode AR 3D',
+                              text: isEn ? 'Open 3D AR Mode' : 'Buka Mode AR 3D',
                               icon: Icons.view_in_ar_rounded,
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Mode AR 3D segera hadir — masih tahap pengembangan.',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    backgroundColor: AppTheme.primaryIndigo,
-                                  ),
-                                );
-                              },
+                              onPressed: () => context.push('/student/ar'),
                             ),
                           ),
                         ],
@@ -547,7 +576,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Fitur Belajar',
+                              l10n.studentFeaturesTitle,
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
@@ -566,7 +595,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            '8 Menu',
+                            isEn ? '8 Menus' : '8 Menu',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -592,7 +621,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                           onTap: () => _startNewSessionDialog(currentTopic),
                         ),
                         _buildFeatureTile(
-                          label: 'Materi',
+                          label: isEn ? 'Modules' : 'Materi',
                           icon: Icons.menu_book_rounded,
                           iconBg: const Color(0xFFFFF7ED),
                           onTap: () => context.push(
@@ -600,7 +629,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                           ),
                         ),
                         _buildFeatureTile(
-                          label: 'Latihan Soal',
+                          label: isEn ? 'Practice' : 'Latihan Soal',
                           icon: Icons.assignment_turned_in_rounded,
                           iconBg: const Color(0xFFFEF9C3),
                           onTap: () => context.push(
@@ -608,25 +637,25 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                           ),
                         ),
                         _buildFeatureTile(
-                          label: 'Rekap',
+                          label: isEn ? 'Recap' : 'Rekap',
                           icon: Icons.analytics_rounded,
                           iconBg: const Color(0xFFDCFCE7),
                           onTap: () => context.push('/student/history'),
                         ),
                         _buildFeatureTile(
-                          label: 'Topik',
+                          label: isEn ? 'Topics' : 'Topik',
                           icon: Icons.layers_rounded,
                           iconBg: const Color(0xFFE0F2FE),
                           onTap: () => _showTopicsDialog(topics),
                         ),
                         _buildFeatureTile(
-                          label: 'Riwayat',
+                          label: isEn ? 'History' : 'Riwayat',
                           icon: Icons.history_rounded,
                           iconBg: const Color(0xFFF3E8FF),
                           onTap: () => context.push('/student/history'),
                         ),
                         _buildFeatureTile(
-                          label: 'Pengumuman',
+                          label: isEn ? 'Notices' : 'Pengumuman',
                           icon: Icons.campaign_rounded,
                           iconBg: const Color(0xFFFCE7F3),
                           onTap: () => context.push('/student/announcements'),
@@ -636,19 +665,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                           icon: Icons.view_in_ar_rounded,
                           iconBg: const Color(0xFFEEF2FF),
                           iconColor: AppTheme.accentOrange,
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Mode AR 3D segera hadir — masih tahap pengembangan.',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                backgroundColor: AppTheme.primaryIndigo,
-                              ),
-                            );
-                          },
+                          onTap: () => context.push('/student/ar'),
                         ),
                       ],
                     ),
@@ -667,7 +684,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Latihan Soal',
+                              isEn ? 'Practice Quizzes' : 'Latihan Soal',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w800,
@@ -687,7 +704,9 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              'Topik: ${currentTopic.titleId}',
+                              isEn
+                                  ? 'Topic: ${currentTopic.localizedTitle(lang)}'
+                                  : 'Topik: ${currentTopic.localizedTitle(lang)}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.plusJakartaSans(
@@ -741,7 +760,9 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        '5 soal • Sebelum belajar',
+                                        isEn
+                                            ? '5 questions • Before learning'
+                                            : '5 soal • Sebelum belajar',
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 12.5,
                                           color: AppTheme.textSecondary,
@@ -751,7 +772,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                                   ),
                                 ),
                                 ClayButton(
-                                  text: 'Mulai',
+                                  text: isEn ? 'Start' : 'Mulai',
                                   height: 40,
                                   onPressed: () => context.push(
                                     '/student/quiz/${currentTopic.id}?type=pre_test',
@@ -797,7 +818,9 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        '5 soal • Setelah belajar',
+                                        isEn
+                                            ? '5 questions • After learning'
+                                            : '5 soal • Setelah belajar',
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 12.5,
                                           color: AppTheme.textSecondary,
@@ -825,7 +848,9 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        'Selesaikan Pre-Test dulu',
+                                        isEn
+                                            ? 'Complete Pre-Test first'
+                                            : 'Selesaikan Pre-Test dulu',
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
@@ -857,7 +882,9 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Topik Aktif: ${currentTopic.titleId}',
+                                      l10n.activeTopicLabel(
+                                        currentTopic.localizedTitle(lang),
+                                      ),
                                       style: GoogleFonts.plusJakartaSans(
                                         fontWeight: FontWeight.w800,
                                         fontSize: 16,
@@ -866,7 +893,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Struktur Data',
+                                      isEn ? 'Data Structures' : 'Struktur Data',
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 13,
                                         color: AppTheme.textSecondary,
@@ -893,7 +920,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                                   ),
                                 ),
                                 child: Text(
-                                  '$bestMeter% Paham',
+                                  l10n.understoodBadge(bestMeter),
                                   style: GoogleFonts.plusJakartaSans(
                                     fontWeight: FontWeight.w800,
                                     fontSize: 13,
@@ -918,8 +945,8 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                             width: double.infinity,
                             child: ClayButton(
                               text: bestMeter > 0
-                                  ? 'Lanjutkan Mengajar'
-                                  : 'Mulai Mengajar Buddy',
+                                  ? l10n.continueTeaching
+                                  : l10n.startTeachingBuddy,
                               icon: Icons.chat_bubble_rounded,
                               onPressed: () =>
                                   _startNewSessionDialog(currentTopic),
@@ -967,7 +994,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
     );
   }
 
-  Widget _buildStatCardRich(int done, int total) {
+  Widget _buildStatCardRich(int done, int total, String label) {
     return ClayCard(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       borderRadius: 20,
@@ -997,7 +1024,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Topik Tuntas',
+            label,
             textAlign: TextAlign.center,
             maxLines: 2,
             style: GoogleFonts.plusJakartaSans(

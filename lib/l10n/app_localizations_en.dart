@@ -386,4 +386,719 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get topicCannotDeleteNote =>
       'Topics with existing sessions can only be deactivated, not deleted.';
+
+  @override
+  String get navChat => 'Chat';
+
+  @override
+  String get navHome => 'Home';
+
+  @override
+  String get navSettings => 'Settings';
+
+  @override
+  String get back => 'Back';
+
+  @override
+  String get seeAll => 'See All';
+
+  @override
+  String get switchedToEn => 'Switched to English';
+
+  @override
+  String get switchedToId => 'Switched to Indonesian';
+
+  @override
+  String failedToLoad(String error) {
+    return 'Failed to load data: $error';
+  }
+
+  @override
+  String get learningProgressTitle => 'Learning Progress';
+
+  @override
+  String activeTopicLabel(String topic) {
+    return 'Active Topic: $topic';
+  }
+
+  @override
+  String understoodBadge(int percent) {
+    return '$percent% Understood';
+  }
+
+  @override
+  String get continueTeaching => 'Continue Teaching';
+
+  @override
+  String get startTeachingBuddy => 'Start Teaching Buddy';
+
+  @override
+  String get studentFeaturesTitle => 'Student Learning Features';
+
+  @override
+  String get featureMaterials => 'Study Modules';
+
+  @override
+  String get featureMaterialsSub => 'LIFO theory & analogies';
+
+  @override
+  String get featureQuiz => 'Comprehension Quiz';
+
+  @override
+  String get featureQuizSub => 'Stack concept evaluation';
+
+  @override
+  String get featureHistory => 'Session History';
+
+  @override
+  String featureHistorySub(int count) {
+    return '$count teaching sessions';
+  }
+
+  @override
+  String get featureAssignments => 'Tasks Board';
+
+  @override
+  String featureAssignmentsSub(int count) {
+    return '$count active tasks';
+  }
+
+  @override
+  String get featureAiRoom => 'AI Buddy Room';
+
+  @override
+  String get featureAiRoomSub => 'Tutor the AI student';
+
+  @override
+  String get featureProtege => 'Protégé Guide';
+
+  @override
+  String get featureProtegeSub => 'Learn by teaching';
+
+  @override
+  String get featurePreTest => 'Initial Pre-Test';
+
+  @override
+  String get featurePreTestSub => 'Test basic knowledge';
+
+  @override
+  String get featureSettings => 'Account Settings';
+
+  @override
+  String get featureSettingsSub => 'Profile & password';
+
+  @override
+  String get teacherTasksTitle => 'Teacher Tasks & Announcements';
+
+  @override
+  String get noNewTasks => 'No new tasks assigned yet.';
+
+  @override
+  String get protegeModalTitle => 'The Protégé Effect Method';
+
+  @override
+  String get protegeWhatIs => 'What is the Protégé Effect?';
+
+  @override
+  String get protegeWhatIsBody =>
+      'The Protégé Effect is an educational psychology phenomenon where a person understands a subject much more deeply by teaching it to someone else.';
+
+  @override
+  String get protegeYourRole => 'Your Role in Learn Buddy:';
+
+  @override
+  String get protegeYourRoleBody =>
+      'Buddy is your AI student who is confused about Data Structures. Explain the principles in your own words, use real-world analogies, and correct Buddy\'s misconceptions until its understanding reaches 100%!';
+
+  @override
+  String get protegeGotIt => 'Got It, Ready to Teach!';
+
+  @override
+  String get startSessionBtn => 'Start Session';
+
+  @override
+  String startSessionFailed(String error) {
+    return 'Failed to start session: $error';
+  }
+
+  @override
+  String get studyModuleTitle => 'Study Module';
+
+  @override
+  String get moduleLinkCopied => 'Module link copied to clipboard!';
+
+  @override
+  String get moduleNotFound => 'Module data not found';
+
+  @override
+  String get basicDataStructuresBadge => 'Basic Data Structures';
+
+  @override
+  String readingTimeMinutes(int minutes) {
+    return '$minutes Min Read';
+  }
+
+  @override
+  String get tabBasicTheory => 'Basic Theory';
+
+  @override
+  String get tabRealAnalogy => 'Real Analogy';
+
+  @override
+  String get tabCodeExample => 'Code Example';
+
+  @override
+  String get mainConceptTitle => 'Core Stack Concept';
+
+  @override
+  String get coreOperationsTitle => 'Core Stack Operations';
+
+  @override
+  String get realWorldAnalogyTitle => 'Real-World Analogy';
+
+  @override
+  String get realAppsExamplesTitle => 'Real Programming Examples:';
+
+  @override
+  String get codeCopied => 'Code copied to clipboard!';
+
+  @override
+  String get preTestTitle => 'Evaluation Pre-Test';
+
+  @override
+  String get postTestTitle => 'Comprehension Post-Test';
+
+  @override
+  String get preTestTab => 'Pre-Test (Initial)';
+
+  @override
+  String get postTestTab => 'Post-Test (Final)';
+
+  @override
+  String get noQuestionsYet => 'No questions available for this category yet.';
+
+  @override
+  String get answerAllPrompt =>
+      'Please answer all questions before submitting!';
+
+  @override
+  String quizLoadError(String error) {
+    return 'Error loading quiz: $error';
+  }
+
+  @override
+  String quizSaveError(String error) {
+    return 'Failed to save result: $error';
+  }
+
+  @override
+  String questionCounter(int current, int total) {
+    return 'Question $current of $total';
+  }
+
+  @override
+  String answeredCounter(int answered, int total) {
+    return '$answered/$total Answered';
+  }
+
+  @override
+  String get previousBtn => 'Previous';
+
+  @override
+  String get nextBtn => 'Next';
+
+  @override
+  String get submitQuizBtn => 'Submit Quiz';
+
+  @override
+  String yourScoreLabel(int score) {
+    return 'Your Evaluation Score: $score / 100';
+  }
+
+  @override
+  String get scorePassedMsg =>
+      'Your understanding of Stack concepts is very good!';
+
+  @override
+  String get scoreNeedsWorkMsg =>
+      'There are still some concepts to strengthen with AI Buddy.';
+
+  @override
+  String get answerReviewTitle => 'Answer Review & Key:';
+
+  @override
+  String questionNumber(int num) {
+    return 'Question $num';
+  }
+
+  @override
+  String yourAnswerLabel(String ans) {
+    return 'Your Answer: $ans';
+  }
+
+  @override
+  String correctAnswerLabel(String ans) {
+    return 'Correct Answer: $ans';
+  }
+
+  @override
+  String explanationLabel(String exp) {
+    return 'Explanation: $exp';
+  }
+
+  @override
+  String get backToDashboard => 'Back to Dashboard';
+
+  @override
+  String get announcementsTitle => 'Announcements & Tasks Board';
+
+  @override
+  String get noAnnouncementsYet =>
+      'No tasks or announcements from your teacher yet.';
+
+  @override
+  String get typePracticum => 'Practicum Task';
+
+  @override
+  String get typeAnnouncement => 'Class Announcement';
+
+  @override
+  String get typeIndividual => 'Individual Task';
+
+  @override
+  String get defaultTeacherName => 'Instructor';
+
+  @override
+  String get openModuleBtn => 'Open Module';
+
+  @override
+  String get historyPageTitle => 'Learning Session History';
+
+  @override
+  String get sessionFinishedUnderstood => 'Completed';
+
+  @override
+  String get sessionRunning => 'In Progress';
+
+  @override
+  String get sessionIncomplete => 'Incomplete';
+
+  @override
+  String teachingTurnsLang(int count, String lang) {
+    return '$count Teaching Turns · Language: $lang';
+  }
+
+  @override
+  String get viewEvalRecapBtn => 'View Evaluation & Recap';
+
+  @override
+  String get buddyAiLabel => 'Buddy (AI Student)';
+
+  @override
+  String get buddyUnderstandingLabel => 'Buddy Understanding Level';
+
+  @override
+  String get buddyTypingHint =>
+      'Buddy is typing & processing your explanation...';
+
+  @override
+  String get finishBtn => 'Finish';
+
+  @override
+  String get endSessionModalTitle => 'End Learning Session?';
+
+  @override
+  String get endSessionModalQuestion =>
+      'Are you sure you want to finish this teaching session?';
+
+  @override
+  String get endSessionModalDesc =>
+      'The system will generate an Achievement Recap & Comprehension Evaluation based on the concepts you taught Buddy.';
+
+  @override
+  String get continueLearningBtn => 'Continue Learning';
+
+  @override
+  String get endAndViewRecapBtn => 'End & View Recap';
+
+  @override
+  String get rubricModalTitle => 'AI Buddy Assessment Rubric';
+
+  @override
+  String get rubricModalDesc =>
+      'Teach and explain these key points so Buddy fully understands:';
+
+  @override
+  String get viewCriteriaTooltip => 'View Assessment Criteria';
+
+  @override
+  String get sessionNotFound => 'Learning session not found';
+
+  @override
+  String get viewThisRecapBtn => 'View This Session Recap';
+
+  @override
+  String get recapPageTitle => 'Learning Achievement Recap';
+
+  @override
+  String get recapCompletedBadge => 'Mastered (>=80%)';
+
+  @override
+  String get recapNeedsWorkBadge => 'Needs Strengthening';
+
+  @override
+  String teachingTurnsGiven(int count) {
+    return '$count Teaching Turns Given';
+  }
+
+  @override
+  String get resolvedConceptsTitle => 'Concepts Successfully Clarified';
+
+  @override
+  String get unresolvedConceptsTitle => 'Concepts Still Needing Reinforcement';
+
+  @override
+  String get unresolvedConceptsHint =>
+      'Buddy is still confused on these points. Try teaching again with a new analogy.';
+
+  @override
+  String get rereadChatBtn => 'Review Chat History';
+
+  @override
+  String get teachAgainBtn => 'Teach Again (New Session)';
+
+  @override
+  String get backToHomeBtn => 'Back to Main Home';
+
+  @override
+  String get chatBubbleYou => 'YOU (TEACHER)';
+
+  @override
+  String get chatBubbleBuddy => 'BUDDY (AI STUDENT)';
+
+  @override
+  String get accountSettingsTitle => 'Account Settings';
+
+  @override
+  String get chooseAvatarTitle => 'Choose Account Avatar';
+
+  @override
+  String get profileUpdatedMsg => 'Profile updated successfully!';
+
+  @override
+  String profileUpdateError(String error) {
+    return 'Failed to save profile: $error';
+  }
+
+  @override
+  String get accountInfoSection => 'Account Information';
+
+  @override
+  String get enterYourNameHint => 'Enter your name';
+
+  @override
+  String get saveChangesBtn => 'Save Changes';
+
+  @override
+  String get appLanguageSub => 'Choose app interface language';
+
+  @override
+  String get securityDataSection => 'Security & Data';
+
+  @override
+  String get changePasswordTitle => 'Change Password';
+
+  @override
+  String get changePasswordSub => 'Change your account password periodically';
+
+  @override
+  String get clearChatHistoryTitle => 'Clear Chat History';
+
+  @override
+  String get clearChatHistorySub => 'Delete all conversations with Buddy';
+
+  @override
+  String get clearChatConfirmTitle => 'Delete Chat History?';
+
+  @override
+  String get clearChatConfirmBody =>
+      'All conversation history and tutoring sessions with AI Buddy will be permanently deleted. This action cannot be undone.';
+
+  @override
+  String get yesDeleteAllBtn => 'Yes, Delete All';
+
+  @override
+  String get clearChatSuccess => 'All session history has been cleared.';
+
+  @override
+  String clearChatError(String error) {
+    return 'Failed to delete history: $error';
+  }
+
+  @override
+  String get logoutFullBtn => 'Sign Out (Logout)';
+
+  @override
+  String get accountSecurityTitle => 'Account Security';
+
+  @override
+  String get changePasswordDesc =>
+      'Enter a new password for your account. Make sure it is strong and hard to guess.';
+
+  @override
+  String get newPasswordLabel => 'New Password';
+
+  @override
+  String get minCharsHint => 'Minimum 6 characters';
+
+  @override
+  String get confirmPasswordLabel => 'Confirm New Password';
+
+  @override
+  String get repeatPasswordHint => 'Repeat new password';
+
+  @override
+  String get saveNewPasswordBtn => 'Save New Password';
+
+  @override
+  String get passwordMin6Error => 'Password must be at least 6 characters.';
+
+  @override
+  String get passwordMismatchError => 'Password confirmation does not match.';
+
+  @override
+  String get passwordChangedMsg => 'Password changed successfully!';
+
+  @override
+  String passwordChangeError(String error) {
+    return 'Failed to change password: $error';
+  }
+
+  @override
+  String get teacherPanelSub => 'Teacher Panel · Data Structures';
+
+  @override
+  String get totalStudentsKpi => 'Total Students';
+
+  @override
+  String get classAverageKpi => 'Class Average';
+
+  @override
+  String get needsGuidanceKpi => 'Needs Guidance';
+
+  @override
+  String get masteredKpi => 'Mastered';
+
+  @override
+  String get teacherActionsTitle => 'Teacher Management Actions';
+
+  @override
+  String get manageModulesRubricBtn => 'Manage Modules & Rubric';
+
+  @override
+  String get createPracticumTaskBtn => 'Create Practicum Task';
+
+  @override
+  String get createTaskModalTitle => 'Create New Task / Announcement';
+
+  @override
+  String get taskTitleLabel => 'Task / Announcement Title';
+
+  @override
+  String get taskTitleHint => 'E.g., Stack Practicum Using Dart';
+
+  @override
+  String get taskDescLabel => 'Instructions / Description';
+
+  @override
+  String get taskDescHint => 'Write task instructions for students...';
+
+  @override
+  String get categoryLabel => 'Category:';
+
+  @override
+  String dueDateLabel(String date) {
+    return 'Due Date: $date';
+  }
+
+  @override
+  String get publishTaskBtn => 'Publish Task';
+
+  @override
+  String get taskPublishedMsg => 'Task published to students successfully!';
+
+  @override
+  String get monitoringListTitle => 'Monitoring & Student List';
+
+  @override
+  String filterAll(int count) {
+    return 'All ($count)';
+  }
+
+  @override
+  String filterRemedial(int count) {
+    return 'Remedial ($count)';
+  }
+
+  @override
+  String filterMastered(int count) {
+    return 'Mastered ($count)';
+  }
+
+  @override
+  String get noStudentsInCategory => 'No students in this category.';
+
+  @override
+  String sessionsWithBuddy(int count) {
+    return '$count Learning Sessions with Buddy';
+  }
+
+  @override
+  String get viewTranscriptBtn => 'View Transcript';
+
+  @override
+  String get transcriptDetailTitle => 'Transcript & Report Detail';
+
+  @override
+  String get teacherPrivacyDesc =>
+      'Privacy Protected: Teachers only view competency rubric achievements & conceptual evidence quotes, without viewing raw chats.';
+
+  @override
+  String get sessionHistoryRubricTitle => 'Learning Session History & Rubric';
+
+  @override
+  String get noStudentSessions =>
+      'This student has no learning sessions with Buddy yet.';
+
+  @override
+  String get criteriaAchievementTitle => 'Comprehension Criteria Achievement:';
+
+  @override
+  String studentEvidenceQuote(String quote) {
+    return 'Student Explanation Evidence: \"$quote\"';
+  }
+
+  @override
+  String get forgotPasswordLink => 'Forgot Password?';
+
+  @override
+  String get resetPasswordTitle => 'Reset Password';
+
+  @override
+  String get resetPasswordDesc =>
+      'Enter your account email. We will send a password recovery link to your inbox.';
+
+  @override
+  String get accountEmailLabel => 'Account Email';
+
+  @override
+  String get sendLinkBtn => 'Send Link';
+
+  @override
+  String get resetLinkSentMsg =>
+      'Password reset link has been sent to your email!';
+
+  @override
+  String get chooseFromGalleryBtn => 'Choose Photo from Gallery';
+
+  @override
+  String get chooseFromFilesGalleryBtn => 'Choose Photo (Gallery / Files)';
+
+  @override
+  String get chooseFromCameraBtn => 'Take Photo with Camera';
+
+  @override
+  String get permissionDeniedMsg =>
+      'Photo/camera permission denied. Please enable it in device Settings.';
+
+  @override
+  String get removeProfilePhotoBtn => 'Remove Profile Photo';
+
+  @override
+  String get orChooseEmojiLabel => 'Or choose an emoji avatar:';
+
+  @override
+  String get uploadingPhotoMsg => 'Uploading profile photo...';
+
+  @override
+  String get photoUpdatedMsg => 'Profile photo updated!';
+
+  @override
+  String get photoRemovedMsg => 'Profile photo removed.';
+
+  @override
+  String photoUploadError(String error) {
+    return 'Failed to upload photo: $error';
+  }
+
+  @override
+  String get arPageTitle => 'Data Structures AR Mode';
+
+  @override
+  String get arCameraActive => 'ARCore Camera Active';
+
+  @override
+  String get arUnsupportedTitle => 'ARCore Not Supported';
+
+  @override
+  String get arUnsupportedDesc =>
+      'This device does not support Google ARCore. You can still test the interactive simulation on screen.';
+
+  @override
+  String get arCameraRequired =>
+      'Camera permission is required to enable Real AR view.';
+
+  @override
+  String get arGrantCameraBtn => 'Allow Camera';
+
+  @override
+  String get arValueHint => 'Element value (e.g. 42, Book A)';
+
+  @override
+  String arCapacityLabel(int count, int max) {
+    return 'Capacity: $count/$max';
+  }
+
+  @override
+  String get arStackEmpty =>
+      'Stack is empty (0/5). Press PUSH to add an element.';
+
+  @override
+  String get arQueueEmpty =>
+      'Queue is empty (0/5). Press ENQUEUE to add to the queue.';
+
+  @override
+  String arPushSuccess(String item) {
+    return 'PUSH \"$item\" added to the TOP position (LIFO).';
+  }
+
+  @override
+  String arPopSuccess(String item) {
+    return 'POP removed \"$item\" from the top (Last In, First Out).';
+  }
+
+  @override
+  String arEnqueueSuccess(String item) {
+    return 'ENQUEUE \"$item\" entered at the REAR position (FIFO).';
+  }
+
+  @override
+  String arDequeueSuccess(String item) {
+    return 'DEQUEUE removed \"$item\" from the FRONT (First In, First Out).';
+  }
+
+  @override
+  String arPeekSuccess(String item) {
+    return 'PEEK inspects element \"$item\" without removing it.';
+  }
+
+  @override
+  String get arOverflowAlert => 'OVERFLOW! Maximum capacity (5/5) is full.';
+
+  @override
+  String get arUnderflowAlert =>
+      'UNDERFLOW! Data structure is empty, no elements left.';
+
+  @override
+  String get arResetDone => 'Simulation cleared (Reset).';
 }

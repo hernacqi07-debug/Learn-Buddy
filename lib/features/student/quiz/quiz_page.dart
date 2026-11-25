@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
@@ -65,10 +66,11 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   }
 
   Future<void> _submitQuiz(List<Question> questions) async {
+    final l10n = context.l10n;
     if (_selectedAnswers.length < questions.length) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Harap jawab semua soal sebelum mengumpulkan!'),
+        SnackBar(
+          content: Text(l10n.answerAllPrompt),
           backgroundColor: AppTheme.accentOrange,
         ),
       );
@@ -111,7 +113,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Gagal menyimpan hasil: $e'),
+            content: Text(l10n.quizSaveError(e.toString())),
             backgroundColor: AppTheme.dangerRed,
           ),
         );
@@ -123,7 +125,8 @@ class _QuizPageState extends ConsumerState<QuizPage> {
 
   @override
   Widget build(BuildContext context) {
-    final typeLabel = _currentType == 'pre_test' ? 'Pre-Test Evaluasi' : 'Post-Test Pemahaman';
+    final l10n = context.l10n;
+    final typeLabel = _currentType == 'pre_test' ? l10n.preTestTitle : l10n.postTestTitle;
 
     return Scaffold(
       backgroundColor: AppTheme.clayCanvas,
@@ -150,7 +153,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
           if (snapshot.hasError) {
             return Center(
               child: Text(
-                'Terjadi kesalahan memuat kuis: ${snapshot.error}',
+                l10n.quizLoadError(snapshot.error.toString()),
                 style: GoogleFonts.plusJakartaSans(color: AppTheme.dangerRed),
               ),
             );
@@ -183,7 +186,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                               : AppTheme.clayBorder,
                           child: Center(
                             child: Text(
-                              'Pre-Test (Awal)',
+                              l10n.preTestTab,
                               style: GoogleFonts.plusJakartaSans(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
@@ -215,7 +218,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                               : AppTheme.clayBorder,
                           child: Center(
                             child: Text(
-                              'Post-Test (Akhir)',
+                              l10n.postTestTab,
                               style: GoogleFonts.plusJakartaSans(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
@@ -244,7 +247,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                           const Icon(Icons.quiz_outlined, size: 48, color: AppTheme.textMuted),
                           const SizedBox(height: 12),
                           Text(
-                            'Belum ada soal untuk kategori ini.',
+                            l10n.noQuestionsYet,
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -275,7 +278,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Soal ${_currentIndex + 1} dari ${questions.length}',
+                                  l10n.questionCounter(_currentIndex + 1, questions.length),
                                   style: GoogleFonts.plusJakartaSans(
                                     fontWeight: FontWeight.w800,
                                     fontSize: 14,
@@ -283,7 +286,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                                   ),
                                 ),
                                 ClayPill(
-                                  label: '${_selectedAnswers.length}/${questions.length} Terjawab',
+                                  label: l10n.answeredCounter(_selectedAnswers.length, questions.length),
                                   color: AppTheme.primaryIndigoLight,
                                   textColor: AppTheme.primaryIndigo,
                                 ),
@@ -318,7 +321,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       if (_currentIndex > 0)
                         Expanded(
                           child: ClayButton(
-                            text: 'Sebelumnya',
+                            text: l10n.previousBtn,
                             isPrimary: false,
                             onPressed: () => setState(() => _currentIndex--),
                           ),
@@ -327,13 +330,13 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       Expanded(
                         child: _currentIndex == questions.length - 1
                             ? ClayButton(
-                                text: 'Kumpulkan Kuis',
+                                text: l10n.submitQuizBtn,
                                 isAccent: true,
                                 isLoading: _isSaving,
                                 onPressed: () => _submitQuiz(questions),
                               )
                             : ClayButton(
-                                text: 'Selanjutnya',
+                                text: l10n.nextBtn,
                                 onPressed: () => setState(() => _currentIndex++),
                               ),
                       ),
@@ -446,6 +449,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
   }
 
   Widget _buildResultView(List<Question> questions, QuizAttempt attempt) {
+    final l10n = context.l10n;
     final isPassed = attempt.score >= 75;
 
     return ListView(
@@ -464,7 +468,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Nilai Evaluasi Anda: ${attempt.score} / 100',
+                l10n.yourScoreLabel(attempt.score),
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -473,9 +477,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                isPassed
-                    ? 'Pemahaman Anda mengenai konsep Stack sudah sangat baik!'
-                    : 'Masih ada beberapa konsep yang perlu diperkuat bersama AI Buddy.',
+                isPassed ? l10n.scorePassedMsg : l10n.scoreNeedsWorkMsg,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13.5,
@@ -487,7 +489,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         ),
         const SizedBox(height: 20),
         Text(
-          'Pembahasan Soal & Kunci Jawaban:',
+          l10n.answerReviewTitle,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 16,
             fontWeight: FontWeight.w800,
@@ -516,7 +518,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Soal ${idx + 1}',
+                        l10n.questionNumber(idx + 1),
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
@@ -535,7 +537,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Jawaban Anda: ${userAns >= 0 && userAns < q.options.length ? q.options[userAns] : '-'}',
+                    l10n.yourAnswerLabel(userAns >= 0 && userAns < q.options.length ? q.options[userAns] : '-'),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12.5,
                       color: isCorrect ? AppTheme.successGreen : AppTheme.dangerRed,
@@ -545,7 +547,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   if (!isCorrect) ...[
                     const SizedBox(height: 4),
                     Text(
-                      'Jawaban Benar: ${q.options[q.correctIndex]}',
+                      l10n.correctAnswerLabel(q.options[q.correctIndex]),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12.5,
                         color: AppTheme.successGreen,
@@ -562,7 +564,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        'Penjelasan: ${q.explanation}',
+                        l10n.explanationLabel(q.explanation!),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           color: AppTheme.textSecondary,
@@ -577,7 +579,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         }),
         const SizedBox(height: 12),
         ClayButton(
-          text: 'Kembali ke Dashboard',
+          text: l10n.backToDashboard,
           onPressed: () => context.pop(),
         ),
       ],

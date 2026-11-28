@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/admin/presentation/admin_dashboard_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/register_page.dart';
 import '../../features/settings/presentation/change_password_page.dart';
@@ -48,18 +49,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return isAuthRoute ? null : '/login';
       }
 
-      final homeRoute =
-          profile.role == UserRole.teacher ? '/teacher' : '/student';
+      final homeRoute = switch (profile.role) {
+        UserRole.admin => '/admin',
+        UserRole.teacher => '/teacher',
+        UserRole.student => '/student',
+      };
 
       if (isAuthRoute) {
         return homeRoute;
       }
 
-      if (profile.role == UserRole.student && path.startsWith('/teacher')) {
+      if (profile.role == UserRole.student &&
+          (path.startsWith('/teacher') || path.startsWith('/admin'))) {
         return '/student';
       }
-      if (profile.role == UserRole.teacher && path.startsWith('/student')) {
+      if (profile.role == UserRole.teacher &&
+          (path.startsWith('/student') || path.startsWith('/admin'))) {
         return '/teacher';
+      }
+      if (profile.role == UserRole.admin &&
+          (path.startsWith('/student') || path.startsWith('/teacher'))) {
+        return '/admin';
       }
 
       return null;
@@ -133,6 +143,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => TeacherStudentDetailPage(
           studentId: state.pathParameters['studentId']!,
         ),
+      ),
+      GoRoute(
+        path: '/admin',
+        builder: (context, state) => const AdminDashboardPage(),
       ),
       GoRoute(
         path: '/settings',

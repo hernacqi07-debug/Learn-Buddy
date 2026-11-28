@@ -26,6 +26,8 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
   bool _checkingPerms = true;
   bool _arSupported = false;
   bool _markerDetected = false;
+  String? _activeObjectType; // e.g. 'stack', 'queue', null when no 3D object is active
+  String? _nativeStatus;
 
   List<String> _items = [];
   final int _maxCapacity = 5;
@@ -56,8 +58,22 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
     if (call.method == 'onMarkerStatus' && mounted) {
       final args = call.arguments as Map?;
       final detected = args?['detected'] == true;
+      final objectType = args?['objectType'] as String?;
+      final status = args?['status'] as String?;
+      final rawItems = (args?['items'] as List?)?.map((e) => e.toString()).toList();
       setState(() {
         _markerDetected = detected;
+        _activeObjectType = detected ? objectType : null;
+        if (status != null && status.isNotEmpty) {
+          _nativeStatus = status;
+        }
+        if (rawItems != null) {
+          _items = rawItems;
+          if (_items.isNotEmpty && _counter <= _items.length) {
+            _counter = _items.length + 1;
+            _inputCtrl.text = 'Data $_counter';
+          }
+        }
       });
     }
   }
@@ -182,50 +198,6 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
     });
   }
 
-  void _showMarkerDialog() {
-    final isEn = Localizations.localeOf(context).languageCode == 'en';
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          isEn ? 'Stack (LIFO) AR Marker' : 'Marker AR Stack (LIFO)',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 16),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.asset('assets/ar/marker_stack.png', width: 220, height: 220),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              isEn
-                  ? 'Point the AR camera at this printed or screen marker to spawn the 3D Stack.'
-                  : 'Arahkan kamera AR ke gambar marker ini (cetak atau layar laptop) untuk memunculkan Stack 3D.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(
-              isEn ? 'Close' : 'Tutup',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -234,9 +206,10 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
 
     final statusLabel = !arActive
         ? l10n.arPageTitle
-        : (_markerDetected
-            ? (isEn ? 'Stack Marker Detected (3D Active)' : 'Marker Stack Terdeteksi (3D Aktif)')
-            : (isEn ? 'Point camera at Stack Marker' : 'Arahkan kamera ke Marker Stack'));
+        : (_nativeStatus ??
+            (_markerDetected
+                ? (isEn ? 'Stack Marker Detected (3D Active)' : 'Marker Stack Terdeteksi (3D Aktif)')
+                : (isEn ? 'Point camera at Stack Marker' : 'Arahkan kamera ke Marker Stack')));
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
@@ -326,20 +299,7 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
                           ),
                         ),
                       ),
-                      if (arActive) ...[
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: _showMarkerDialog,
-                          child: Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.92),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.qr_code_2_rounded, color: AppTheme.primaryIndigo),
-                          ),
-                        ),
+                      if (arActive && _markerDetected && _activeObjectType != null) ...[
                         const SizedBox(width: 8),
                         GestureDetector(
                           onTap: _handleReset,
@@ -436,131 +396,155 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
                   ),
                 ),
 
-                if (arActive)
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.94),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: _isAlert ? AppTheme.dangerRed : AppTheme.clayBorder,
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            ClayPill(
-                              label: 'Stack • ${l10n.arCapacityLabel(_items.length, _maxCapacity)}',
-                              color: _items.length >= _maxCapacity
-                                  ? const Color(0xFFFEF2F2)
-                                  : AppTheme.primaryIndigoLight,
-                              textColor: _items.length >= _maxCapacity
-                                  ? AppTheme.dangerRed
-                                  : AppTheme.primaryIndigo,
-                            ),
-                            Row(
-                              children: ['Data A', '42', 'Buku 1'].map((preset) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(left: 6),
-                                  child: GestureDetector(
-                                    onTap: () => _inputCtrl.text = preset,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.clayCanvas,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: AppTheme.clayBorder),
-                                      ),
-                                      child: Text(
-                                        preset,
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppTheme.textSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                        if (_feedbackText != null) ...[
-                          const SizedBox(height: 8),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: _isAlert
-                                  ? AppTheme.dangerRedLight
-                                  : AppTheme.primaryIndigoLight,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              _feedbackText!,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: _isAlert ? AppTheme.dangerRed : AppTheme.primaryIndigo,
-                              ),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 8),
-                        ClayTextField(
-                          controller: _inputCtrl,
-                          hintText: l10n.arValueHint,
-                          prefixIcon: Icons.label_outline_rounded,
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ClayButton(
-                                text: 'PUSH',
-                                height: 44,
-                                onPressed: _handlePush,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: ClayButton(
-                                text: 'POP',
-                                isAccent: true,
-                                height: 44,
-                                onPressed: _handlePop,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: ClayButton(
-                                text: 'PEEK',
-                                isPrimary: false,
-                                height: 44,
-                                onPressed: _handlePeek,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                // Dynamic Context-Aware Simulation Menu:
+                // Hidden (clean camera) until a 3D object is detected, then adapts to _activeObjectType.
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 240),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: (arActive && _markerDetected && _activeObjectType != null)
+                      ? _buildSimulationMenuForObject(l10n, _activeObjectType!)
+                      : const SizedBox.shrink(),
+                ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Renders the simulation controls matching the currently detected 3D AR object.
+  /// Extensible for future 3D objects (e.g. 'queue', 'linked_list', 'tree', etc.).
+  Widget _buildSimulationMenuForObject(dynamic l10n, String objectType) {
+    switch (objectType) {
+      case 'stack':
+        return _buildStackSimulationMenu(l10n);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildStackSimulationMenu(dynamic l10n) {
+    return Container(
+      key: const ValueKey('ar_menu_stack'),
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: _isAlert ? AppTheme.dangerRed : AppTheme.clayBorder,
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              ClayPill(
+                label: 'Stack • ${l10n.arCapacityLabel(_items.length, _maxCapacity)}',
+                color: _items.length >= _maxCapacity
+                    ? const Color(0xFFFEF2F2)
+                    : AppTheme.primaryIndigoLight,
+                textColor: _items.length >= _maxCapacity
+                    ? AppTheme.dangerRed
+                    : AppTheme.primaryIndigo,
+              ),
+              Row(
+                children: ['Data A', '42', 'Buku 1'].map((preset) {
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 6),
+                    child: GestureDetector(
+                      onTap: () => _inputCtrl.text = preset,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.clayCanvas,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.clayBorder),
+                        ),
+                        child: Text(
+                          preset,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+          if (_feedbackText != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: _isAlert
+                    ? AppTheme.dangerRedLight
+                    : AppTheme.primaryIndigoLight,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _feedbackText!,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: _isAlert ? AppTheme.dangerRed : AppTheme.primaryIndigo,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          ClayTextField(
+            controller: _inputCtrl,
+            hintText: l10n.arValueHint,
+            prefixIcon: Icons.label_outline_rounded,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: ClayButton(
+                  text: 'PUSH',
+                  height: 44,
+                  onPressed: _handlePush,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ClayButton(
+                  text: 'POP',
+                  isAccent: true,
+                  height: 44,
+                  onPressed: _handlePop,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ClayButton(
+                  text: 'PEEK',
+                  isPrimary: false,
+                  height: 44,
+                  onPressed: _handlePeek,
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -1,9 +1,15 @@
 enum UserRole {
   student,
-  teacher;
+  teacher,
+  admin;
 
-  static UserRole fromString(String value) =>
-      value == 'teacher' ? UserRole.teacher : UserRole.student;
+  static UserRole fromString(String value) {
+    return switch (value) {
+      'admin' => UserRole.admin,
+      'teacher' => UserRole.teacher,
+      _ => UserRole.student,
+    };
+  }
 }
 
 enum SessionStatus {

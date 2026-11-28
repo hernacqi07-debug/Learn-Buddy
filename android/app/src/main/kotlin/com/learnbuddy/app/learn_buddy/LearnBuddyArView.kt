@@ -16,6 +16,7 @@ import android.opengl.GLUtils
 import android.opengl.Matrix
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.Surface
 import android.view.View
 import android.view.WindowManager
@@ -114,6 +115,10 @@ class LearnBuddyArView(
     private var frameTick = 0
 
     private var markerDetected = false
+    private var activeObjectType: String? = null
+    private var lastSentStatus = ""
+    private var dbErrorMessage: String? = null
+    private var hasAutoSeeded = false
     private val anchorMatrix = FloatArray(16)
     private val projMatrix = FloatArray(16)
     private val viewMatrix = FloatArray(16)
@@ -152,26 +157,60 @@ class LearnBuddyArView(
     private fun initSessionIfReady() {
         try {
             val availability = ArCoreApk.getInstance().checkAvailability(activity)
-            if (!availability.isSupported) return
+            if (!availability.isSupported) {
+                emitMarkerStatus(false, null, "ARCore: ${availability.name}")
+                return
+            }
             if (arSession == null) {
                 val session = Session(activity)
                 val config = Config(session)
                 config.focusMode = Config.FocusMode.AUTO
                 config.updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE
+                config.planeFindingMode = Config.PlaneFindingMode.DISABLED
 
-                context.assets.open("marker_stack.png").use { stream ->
-                    val bitmap = BitmapFactory.decodeStream(stream)
-                    val db = AugmentedImageDatabase(session)
-                    db.addImage("stack_marker", bitmap, 0.12f) // 12 cm marker
-                    config.augmentedImageDatabase = db
-                    bitmap.recycle()
+                try {
+                    context.assets.open("marker_stack.png").use { stream ->
+                        val bitmap = BitmapFactory.decodeStream(stream)
+                            ?: throw IllegalStateException("Bitmap decode returned null")
+                        val db = AugmentedImageDatabase(session)
+                        db.addImage("stack_marker", bitmap, 0.12f)
+                        config.augmentedImageDatabase = db
+                        bitmap.recycle()
+                        dbErrorMessage = null
+                        Log.i("LearnBuddyArView", "Loaded marker_stack.png into AugmentedImageDatabase (${db.numImages} imgs)")
+                    }
+                } catch (e: Exception) {
+                    dbErrorMessage = "DB Error: ${e.javaClass.simpleName}"
+                    Log.e("LearnBuddyArView", "Failed to load marker_stack.png", e)
                 }
 
                 session.configure(config)
                 arSession = session
             }
             resumeSession()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            dbErrorMessage = "Session Error: ${e.javaClass.simpleName}"
+            Log.e("LearnBuddyArView", "initSessionIfReady failed", e)
+            emitMarkerStatus(false, null, dbErrorMessage!!)
+        }
+    }
+
+    private fun emitMarkerStatus(detected: Boolean, objectType: String?, status: String) {
+        if (detected == markerDetected && objectType == activeObjectType && status == lastSentStatus) return
+        markerDetected = detected
+        activeObjectType = objectType
+        lastSentStatus = status
+        val activeLabels = synchronized(lock) { stackBlocks.filter { !it.removing }.map { it.label } }
+        mainHandler.post {
+            channel.invokeMethod(
+                "onMarkerStatus",
+                mapOf(
+                    "detected" to detected,
+                    "objectType" to objectType,
+                    "status" to status,
+                    "items" to activeLabels
+                )
+            )
         }
     }
 
@@ -235,7 +274,7 @@ class LearnBuddyArView(
                         result.success(buildStateMap("overflow", null))
                     } else {
                         val idx = active.size
-                        val targetY = 0.022f + idx * 0.034f
+                        val targetY = 0.020f + idx * 0.028f
                         val palette = palettes[colorCounter % palettes.size]
                         colorCounter++
                         stackBlocks.add(
@@ -243,7 +282,7 @@ class LearnBuddyArView(
                                 id = System.nanoTime(),
                                 label = label,
                                 palette = palette,
-                                y = targetY + 0.14f,
+                                y = targetY + 0.11f,
                                 targetY = targetY,
                                 alpha = 0.15f,
                                 targetAlpha = 1.0f
@@ -457,25 +496,60 @@ class LearnBuddyArView(
             // 1. Draw Camera Background
             drawCameraBackground(frame)
 
-            // 2. Track Stack Marker (AugmentedImage)
+            // 2. Track Marker (AugmentedImage) & resolve 3D object type
+            val camState = frame.camera.trackingState
             val images = session.getAllTrackables(AugmentedImage::class.java)
             var foundTracking = false
+            var detectedType: String? = null
+            var methodLabel = ""
             for (img in images) {
-                if (img.name == "stack_marker" && img.trackingState == TrackingState.TRACKING) {
-                    img.centerPose.toMatrix(anchorMatrix, 0)
-                    foundTracking = true
-                    break
-                }
-            }
-            if (foundTracking != markerDetected) {
-                markerDetected = foundTracking
-                mainHandler.post {
-                    channel.invokeMethod("onMarkerStatus", mapOf("detected" to foundTracking))
+                if (img.trackingState == TrackingState.TRACKING) {
+                    val mappedType = when (img.name) {
+                        "stack_marker" -> "stack"
+                        // Future markers (e.g. "queue_marker" -> "queue") map here
+                        else -> null
+                    }
+                    if (mappedType != null) {
+                        img.centerPose.toMatrix(anchorMatrix, 0)
+                        foundTracking = true
+                        detectedType = mappedType
+                        methodLabel = img.trackingMethod.name
+                        break
+                    }
                 }
             }
 
+            if (foundTracking && detectedType == "stack" && !hasAutoSeeded) {
+                synchronized(lock) {
+                    if (stackBlocks.none { !it.removing }) {
+                        val palette = palettes[colorCounter % palettes.size]
+                        colorCounter++
+                        stackBlocks.add(
+                            StackBlock3D(
+                                id = System.nanoTime(),
+                                label = "Data 1",
+                                palette = palette,
+                                y = 0.020f + 0.10f,
+                                targetY = 0.020f,
+                                alpha = 0.2f,
+                                targetAlpha = 1.0f
+                            )
+                        )
+                    }
+                    hasAutoSeeded = true
+                }
+            }
+
+            val statusText = when {
+                dbErrorMessage != null -> dbErrorMessage!!
+                foundTracking -> "3D Aktif ($methodLabel)"
+                camState != TrackingState.TRACKING -> "Kamera: ${frame.camera.trackingFailureReason.name}"
+                else -> "Mencari Marker..."
+            }
+            emitMarkerStatus(foundTracking, detectedType, statusText)
+
             // 3. Draw 3D Stack if marker is detected
-            if (markerDetected) {
+            if (foundTracking) {
                 frame.camera.getProjectionMatrix(projMatrix, 0, 0.05f, 20.0f)
                 frame.camera.getViewMatrix(viewMatrix, 0)
                 Matrix.multiplyMM(vpMatrix, 0, projMatrix, 0, viewMatrix, 0)
@@ -487,7 +561,8 @@ class LearnBuddyArView(
                     stepAnimationsAndCleanupGl()
                 }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.e("LearnBuddyArView", "onDrawFrame error", e)
         }
     }
 
@@ -569,18 +644,18 @@ class LearnBuddyArView(
             currentPeekId = peekBlockId
         }
 
-        // Draw dark base tray on the marker
+        // Draw bright indigo-tinted base tray on the marker
         drawBox(
             x = shakeX,
-            y = 0.003f,
+            y = 0.004f,
             z = 0f,
-            sx = 0.096f,
-            sy = 0.006f,
-            sz = 0.078f,
-            r = 0.12f,
-            g = 0.16f,
-            b = 0.28f,
-            alpha = 0.95f,
+            sx = 0.082f,
+            sy = 0.008f,
+            sz = 0.068f,
+            r = 0.28f,
+            g = 0.36f,
+            b = 0.68f,
+            alpha = 0.96f,
             frontTexId = 0
         )
 
@@ -596,9 +671,9 @@ class LearnBuddyArView(
                 x = shakeX,
                 y = block.y,
                 z = 0f,
-                sx = 0.080f * pulse,
-                sy = 0.030f * pulse,
-                sz = 0.064f * pulse,
+                sx = 0.066f * pulse,
+                sy = 0.024f * pulse,
+                sz = 0.052f * pulse,
                 r = r,
                 g = g,
                 b = b,

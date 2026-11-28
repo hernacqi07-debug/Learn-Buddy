@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/clay_widgets.dart';
+import '../../../core/widgets/user_avatar.dart';
 
 class TeacherDashboardPage extends ConsumerStatefulWidget {
   const TeacherDashboardPage({super.key});
@@ -25,18 +27,32 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
     _future = _load();
   }
 
+  String? _assignedCourseTitle;
+
   Future<(List<Course>, List<TeacherStudentSummary>, List<TeacherTopic>)> _load() async {
     final repo = ref.read(teacherRepositoryProvider);
-    final myProfile = ref.read(currentProfileProvider).value;
+    final myProfile = ref.read(currentProfileProvider).value ??
+        await ref.read(currentProfileProvider.future);
 
     final courses = await repo.getCourses();
 
-    if (_selectedCourseId == null && courses.isNotEmpty) {
+    // Always scope teacher to their assigned course_id in profiles
+    if (myProfile?.courseId != null) {
+      _selectedCourseId = myProfile!.courseId;
+    } else if (_selectedCourseId == null && courses.isNotEmpty) {
       final myCourse = courses.firstWhere(
         (c) => c.teacherId == myProfile?.id,
         orElse: () => courses.first,
       );
       _selectedCourseId = myCourse.id;
+    }
+
+    final activeCourse = courses
+        .where((c) => c.id == _selectedCourseId)
+        .firstOrNull;
+    if (activeCourse != null && mounted) {
+      final lang = ref.read(languageProvider).languageCode;
+      setState(() => _assignedCourseTitle = activeCourse.localizedTitle(lang));
     }
 
     final res = await Future.wait([
@@ -58,6 +74,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
   }
 
   void _showCreateAssignmentDialog(List<TeacherTopic> topics) {
+    final l10n = context.l10n;
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     String selectedType = 'praktikum';
@@ -74,7 +91,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
             side: const BorderSide(color: AppTheme.clayBorder, width: 2),
           ),
           title: Text(
-            'Buat Tugas / Pengumuman Baru',
+            l10n.createTaskModalTitle,
             style: GoogleFonts.plusJakartaSans(
               fontWeight: FontWeight.w800,
               fontSize: 18,
@@ -88,19 +105,19 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
               children: [
                 ClayTextField(
                   controller: titleCtrl,
-                  label: 'Judul Tugas / Pengumuman',
-                  hint: 'Contoh: Praktikum Stack Menggunakan Dart',
+                  label: l10n.taskTitleLabel,
+                  hint: l10n.taskTitleHint,
                 ),
                 const SizedBox(height: 14),
                 ClayTextField(
                   controller: descCtrl,
-                  label: 'Instruksi / Deskripsi',
-                  hint: 'Tuliskan deskripsi tugas untuk siswa...',
+                  label: l10n.taskDescLabel,
+                  hint: l10n.taskDescHint,
                   maxLines: 3,
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Kategori:',
+                  l10n.categoryLabel,
                   style: GoogleFonts.plusJakartaSans(
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
@@ -108,28 +125,99 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     ChoiceChip(
-                      label: const Text('Tugas Praktikum'),
+                      label: Text(l10n.typePracticum),
                       selected: selectedType == 'praktikum',
                       onSelected: (_) => setDialogState(() => selectedType = 'praktikum'),
                     ),
-                    const SizedBox(width: 8),
                     ChoiceChip(
-                      label: const Text('Pengumuman'),
+                      label: Text(l10n.typeAnnouncement),
                       selected: selectedType == 'announcement',
                       onSelected: (_) => setDialogState(() => selectedType = 'announcement'),
                     ),
                   ],
                 ),
                 const SizedBox(height: 14),
-                Text(
-                  'Tenggat Pengumpulan: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textSecondary,
+                if (topics.isNotEmpty) ...[
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedTopicId,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: 'Topik Terkait',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    items: topics
+                        .map(
+                          (t) => DropdownMenuItem<String>(
+                            value: t.id,
+                            child: Text(
+                              t.titleId,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: isSaving
+                        ? null
+                        : (v) => setDialogState(() => selectedTopicId = v),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: isSaving
+                      ? null
+                      : () async {
+                          final picked = await showDatePicker(
+                            context: ctx,
+                            initialDate: selectedDate,
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now().add(const Duration(days: 365)),
+                          );
+                          if (picked != null && ctx.mounted) {
+                            setDialogState(() => selectedDate = picked);
+                          }
+                        },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.clayCanvas,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.clayBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.calendar_today_rounded,
+                          size: 16,
+                          color: AppTheme.primaryIndigo,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            l10n.dueDateLabel(
+                              '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                            ),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.edit_calendar_rounded,
+                          size: 16,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -139,18 +227,26 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text(
-                'Batal',
+                l10n.cancel,
                 style: GoogleFonts.plusJakartaSans(color: AppTheme.textSecondary),
               ),
             ),
             ClayButton(
-              text: 'Publikasikan Tugas',
+              text: l10n.publishTaskBtn,
               isLoading: isSaving,
               height: 44,
               onPressed: () async {
                 final t = titleCtrl.text.trim();
                 final d = descCtrl.text.trim();
-                if (t.isEmpty || d.isEmpty) return;
+                if (t.isEmpty || d.isEmpty) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('Judul dan deskripsi tugas wajib diisi.'),
+                      backgroundColor: AppTheme.accentOrange,
+                    ),
+                  );
+                  return;
+                }
 
                 setDialogState(() => isSaving = true);
                 try {
@@ -166,8 +262,8 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                   if (ctx.mounted) Navigator.pop(ctx);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Tugas berhasil dipublikasikan ke siswa!'),
+                      SnackBar(
+                        content: Text(l10n.taskPublishedMsg),
                         backgroundColor: AppTheme.successGreen,
                       ),
                     );
@@ -177,7 +273,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                   if (ctx.mounted) {
                     setDialogState(() => isSaving = false);
                     ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(content: Text('Gagal: $e'), backgroundColor: AppTheme.dangerRed),
+                      SnackBar(content: Text('$e'), backgroundColor: AppTheme.dangerRed),
                     );
                   }
                 }
@@ -191,6 +287,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final myProfile = ref.watch(currentProfileProvider).value;
 
     return Scaffold(
@@ -198,15 +295,15 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
       appBar: AppBar(
         title: Row(
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFFDE68A), width: 1.5),
-              ),
-              child: const Center(child: Text('👨‍🏫', style: TextStyle(fontSize: 20))),
+            UserAvatar(
+              localPath: ref.watch(localAvatarPathProvider).value,
+              avatarUrl: myProfile?.avatarUrl,
+              emoji: '👨‍🏫',
+              displayName: myProfile?.displayName ?? 'G',
+              size: 38,
+              backgroundColor: const Color(0xFFFEF3C7),
+              borderColor: const Color(0xFFFDE68A),
+              borderWidth: 1.5,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -222,7 +319,13 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                     ),
                   ),
                   Text(
-                    'Panel Guru · Struktur Data',
+                    _assignedCourseTitle != null
+                        ? (ref.watch(languageProvider).languageCode == 'en'
+                            ? 'Teacher Panel · $_assignedCourseTitle'
+                            : 'Panel Guru · $_assignedCourseTitle')
+                        : l10n.teacherPanelSub,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -235,6 +338,53 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
           ],
         ),
         actions: [
+          Consumer(
+            builder: (context, ref, _) {
+              final currentLocale = ref.watch(languageProvider);
+              final isId = currentLocale.languageCode == 'id';
+              return GestureDetector(
+                onTap: () {
+                  final next = isId ? 'en' : 'id';
+                  ref.read(languageProvider.notifier).setLanguage(next);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        next == 'en'
+                            ? 'Beralih ke Bahasa Inggris (English)'
+                            : 'Beralih ke Bahasa Indonesia',
+                      ),
+                      duration: const Duration(seconds: 1),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryIndigoLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.clayBorder, width: 1.2),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(isId ? '🇮🇩' : '🇬🇧', style: const TextStyle(fontSize: 14)),
+                      const SizedBox(width: 4),
+                      Text(
+                        isId ? 'ID' : 'EN',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          color: AppTheme.primaryIndigo,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.settings_outlined, color: AppTheme.textPrimary),
             onPressed: () => context.push('/settings'),
@@ -270,6 +420,15 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
             }
 
             final (courses, students, topics) = snapshot.data!;
+            final assignedCourse = courses
+                .where((c) => c.id == _selectedCourseId)
+                .firstOrNull;
+            final isEn = ref.watch(languageProvider).languageCode == 'en';
+            final assignedCourseTitle = assignedCourse == null
+                ? '-'
+                : (isEn && assignedCourse.titleEn.isNotEmpty
+                    ? assignedCourse.titleEn
+                    : assignedCourse.titleId);
 
             // Calculate analytics KPIs
             final totalStudents = students.length;
@@ -289,12 +448,58 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // Assigned Course Banner (Locked to teacher's subject)
+                ClayCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryIndigoLight,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.menu_book_rounded,
+                          size: 20,
+                          color: AppTheme.primaryIndigo,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isEn ? 'Your Assigned Subject' : 'Mata Pelajaran Anda',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                            Text(
+                              assignedCourseTitle,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
                 // 1. KPI Stats Grid (4 Tactile Clay Cards)
                 Row(
                   children: [
                     Expanded(
                       child: _buildKpiCard(
-                        title: 'Total Siswa',
+                        title: l10n.totalStudentsKpi,
                         value: '$totalStudents',
                         icon: Icons.people_alt_rounded,
                         color: AppTheme.primaryIndigo,
@@ -304,7 +509,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildKpiCard(
-                        title: 'Rata-rata Kelas',
+                        title: l10n.classAverageKpi,
                         value: '${avgMeter.round()}%',
                         icon: Icons.analytics_rounded,
                         color: const Color(0xFF0284C7),
@@ -318,7 +523,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                   children: [
                     Expanded(
                       child: _buildKpiCard(
-                        title: 'Perlu Bimbingan',
+                        title: l10n.needsGuidanceKpi,
                         value: '$strugglingCount',
                         icon: Icons.warning_amber_rounded,
                         color: AppTheme.accentOrange,
@@ -328,7 +533,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildKpiCard(
-                        title: 'Tuntas Paham',
+                        title: l10n.masteredKpi,
                         value: '$completedCount',
                         icon: Icons.verified_rounded,
                         color: AppTheme.successGreen,
@@ -341,7 +546,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
 
                 // 2. Quick Management Actions
                 Text(
-                  'Aksi Manajemen Guru',
+                  l10n.teacherActionsTitle,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -353,7 +558,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                   children: [
                     Expanded(
                       child: ClayButton(
-                        text: 'Kelola Modul & Rubrik',
+                        text: l10n.manageModulesRubricBtn,
                         icon: Icons.edit_note_rounded,
                         isPrimary: true,
                         height: 48,
@@ -370,7 +575,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                   children: [
                     Expanded(
                       child: ClayButton(
-                        text: 'Buat Tugas Praktikum',
+                        text: l10n.createPracticumTaskBtn,
                         icon: Icons.add_task_rounded,
                         isAccent: true,
                         height: 48,
@@ -386,7 +591,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Monitoring & Daftar Siswa',
+                      l10n.monitoringListTitle,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
@@ -398,14 +603,17 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                 const SizedBox(height: 10),
 
                 // Filter Chips
-                Row(
-                  children: [
-                    _buildFilterChip('Semua ($totalStudents)', 'all'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('Remedial ($strugglingCount)', 'struggling'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('Tuntas ($completedCount)', 'completed'),
-                  ],
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip(l10n.filterAll(totalStudents), 'all'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(l10n.filterRemedial(strugglingCount), 'struggling'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(l10n.filterMastered(completedCount), 'completed'),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 14),
 
@@ -414,7 +622,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                     padding: const EdgeInsets.all(24),
                     child: Center(
                       child: Text(
-                        'Tidak ada siswa dalam kategori ini.',
+                        l10n.noStudentsInCategory,
                         style: GoogleFonts.plusJakartaSans(
                           color: AppTheme.textSecondary,
                           fontSize: 14,
@@ -428,23 +636,22 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                         child: ClayCard(
                           padding: const EdgeInsets.all(16),
                           onTap: () {
-                            context.push('/teacher/student/${student.studentId}');
+                            final q = _selectedCourseId != null
+                                ? '?courseId=$_selectedCourseId'
+                                : '';
+                            context.push('/teacher/student/${student.studentId}$q');
                           },
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  CircleAvatar(
-                                    radius: 18,
+                                  UserAvatar(
+                                    avatarUrl: student.avatarUrl,
+                                    displayName: student.displayName,
+                                    size: 36,
                                     backgroundColor: AppTheme.primaryIndigoLight,
-                                    child: Text(
-                                      student.displayName.isNotEmpty ? student.displayName[0] : 'S',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontWeight: FontWeight.w800,
-                                        color: AppTheme.primaryIndigo,
-                                      ),
-                                    ),
+                                    textColor: AppTheme.primaryIndigo,
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -499,7 +706,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    '${student.sessionCount} Sesi Pembelajaran Bersama Buddy',
+                                    l10n.sessionsWithBuddy(student.sessionCount),
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 12,
                                       color: AppTheme.textSecondary,
@@ -508,7 +715,7 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                                   Row(
                                     children: [
                                       Text(
-                                        'Detail Transkrip',
+                                        l10n.viewTranscriptBtn,
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w700,

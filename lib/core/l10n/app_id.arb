@@ -142,5 +142,399 @@
   "descIdLabel": "Deskripsi (ID)",
   "descEnLabel": "Deskripsi (EN)",
   "sortOrderLabel": "Urutan",
-  "topicCannotDeleteNote": "Topik yang sudah punya sesi hanya bisa dinonaktifkan, tidak dihapus."
+  "topicCannotDeleteNote": "Topik yang sudah punya sesi hanya bisa dinonaktifkan, tidak dihapus.",
+
+  "navChat": "Chat",
+  "navHome": "Beranda",
+  "navSettings": "Pengaturan",
+  "back": "Kembali",
+  "seeAll": "Lihat Semua",
+  "switchedToEn": "Beralih ke Bahasa Inggris (English)",
+  "switchedToId": "Beralih ke Bahasa Indonesia",
+  "failedToLoad": "Gagal memuat data: {error}",
+  "@failedToLoad": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+
+  "learningProgressTitle": "Progres Belajar",
+  "activeTopicLabel": "Topik Aktif: {topic}",
+  "@activeTopicLabel": {
+    "placeholders": {
+      "topic": { "type": "String" }
+    }
+  },
+  "understoodBadge": "{percent}% Paham",
+  "@understoodBadge": {
+    "placeholders": {
+      "percent": { "type": "int" }
+    }
+  },
+  "continueTeaching": "Lanjutkan Mengajar",
+  "startTeachingBuddy": "Mulai Mengajar Buddy",
+  "studentFeaturesTitle": "Fitur Pembelajaran Siswa",
+  "featureMaterials": "Modul Materi",
+  "featureMaterialsSub": "Teori & analogi LIFO",
+  "featureQuiz": "Kuis Pemahaman",
+  "featureQuizSub": "Evaluasi konsep Stack",
+  "featureHistory": "Riwayat Sesi",
+  "featureHistorySub": "{count} sesi mengajar",
+  "@featureHistorySub": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "featureAssignments": "Papan Tugas",
+  "featureAssignmentsSub": "{count} tugas aktif",
+  "@featureAssignmentsSub": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "featureAiRoom": "Ruang AI Buddy",
+  "featureAiRoomSub": "Bimbing murid AI",
+  "featureProtege": "Panduan Protégé",
+  "featureProtegeSub": "Belajar lewat mengajar",
+  "featurePreTest": "Pre-Test Awal",
+  "featurePreTestSub": "Uji pemahaman dasar",
+  "featureSettings": "Pengaturan Akun",
+  "featureSettingsSub": "Profil & sandi akun",
+  "teacherTasksTitle": "Tugas & Pengumuman Guru",
+  "noNewTasks": "Belum ada tugas baru yang diberikan.",
+  "protegeModalTitle": "Metode Protégé Effect",
+  "protegeWhatIs": "Apa itu Protégé Effect?",
+  "protegeWhatIsBody": "Protégé Effect adalah fenomena psikologi pendidikan di mana seseorang memahami suatu materi secara jauh lebih mendalam ketika ia mengajarkannya kepada orang lain.",
+  "protegeYourRole": "Peran Anda di Learn Buddy:",
+  "protegeYourRoleBody": "Buddy adalah murid AI Anda yang sedang bingung dengan konsep Struktur Data. Jelaskan prinsip-prinsipnya dengan bahasa Anda sendiri, gunakan analogi riil, dan koreksi kekeliruan Buddy hingga meter pemahamannya mencapai 100%!",
+  "protegeGotIt": "Saya Paham, Siap Mengajar!",
+  "startSessionBtn": "Mulai Sesi",
+  "startSessionFailed": "Gagal memulai sesi: {error}",
+  "@startSessionFailed": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+
+  "studyModuleTitle": "Modul Materi",
+  "moduleLinkCopied": "Tautan modul disalin ke papan klip!",
+  "moduleNotFound": "Data materi tidak ditemukan",
+  "basicDataStructuresBadge": "Struktur Data Dasar",
+  "readingTimeMinutes": "{minutes} Menit Baca",
+  "@readingTimeMinutes": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+  "tabBasicTheory": "Teori Dasar",
+  "tabRealAnalogy": "Analogi Riil",
+  "tabCodeExample": "Contoh Kode",
+  "mainConceptTitle": "Konsep Utama Stack",
+  "coreOperationsTitle": "Operasi Pokok Stack",
+  "realWorldAnalogyTitle": "Analogi Dunia Nyata",
+  "realAppsExamplesTitle": "Contoh Aplikasi Nyata dalam Pemrograman:",
+  "codeCopied": "Kode berhasil disalin!",
+
+  "preTestTitle": "Pre-Test Evaluasi",
+  "postTestTitle": "Post-Test Pemahaman",
+  "preTestTab": "Pre-Test (Awal)",
+  "postTestTab": "Post-Test (Akhir)",
+  "noQuestionsYet": "Belum ada soal untuk kategori ini.",
+  "answerAllPrompt": "Harap jawab semua soal sebelum mengumpulkan!",
+  "quizLoadError": "Terjadi kesalahan memuat kuis: {error}",
+  "@quizLoadError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "quizSaveError": "Gagal menyimpan hasil: {error}",
+  "@quizSaveError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "questionCounter": "Soal {current} dari {total}",
+  "@questionCounter": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "answeredCounter": "{answered}/{total} Terjawab",
+  "@answeredCounter": {
+    "placeholders": {
+      "answered": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "previousBtn": "Sebelumnya",
+  "nextBtn": "Selanjutnya",
+  "submitQuizBtn": "Kumpulkan Kuis",
+  "yourScoreLabel": "Nilai Evaluasi Anda: {score} / 100",
+  "@yourScoreLabel": {
+    "placeholders": {
+      "score": { "type": "int" }
+    }
+  },
+  "scorePassedMsg": "Pemahaman Anda mengenai konsep Stack sudah sangat baik!",
+  "scoreNeedsWorkMsg": "Masih ada beberapa konsep yang perlu diperkuat bersama AI Buddy.",
+  "answerReviewTitle": "Pembahasan Soal & Kunci Jawaban:",
+  "questionNumber": "Soal {num}",
+  "@questionNumber": {
+    "placeholders": {
+      "num": { "type": "int" }
+    }
+  },
+  "yourAnswerLabel": "Jawaban Anda: {ans}",
+  "@yourAnswerLabel": {
+    "placeholders": {
+      "ans": { "type": "String" }
+    }
+  },
+  "correctAnswerLabel": "Jawaban Benar: {ans}",
+  "@correctAnswerLabel": {
+    "placeholders": {
+      "ans": { "type": "String" }
+    }
+  },
+  "explanationLabel": "Penjelasan: {exp}",
+  "@explanationLabel": {
+    "placeholders": {
+      "exp": { "type": "String" }
+    }
+  },
+  "backToDashboard": "Kembali ke Dashboard",
+
+  "announcementsTitle": "Papan Pengumuman & Tugas",
+  "noAnnouncementsYet": "Belum ada tugas atau pengumuman dari guru.",
+  "typePracticum": "Tugas Praktikum",
+  "typeAnnouncement": "Pengumuman Kelas",
+  "typeIndividual": "Tugas Individu",
+  "defaultTeacherName": "Guru Pengampu",
+  "openModuleBtn": "Buka Modul",
+
+  "historyPageTitle": "Riwayat Sesi Belajar",
+  "sessionFinishedUnderstood": "Selesai Paham",
+  "sessionRunning": "Sedang Berjalan",
+  "sessionIncomplete": "Belum Tuntas",
+  "teachingTurnsLang": "{count} Giliran Mengajar Buddy · Bahasa: {lang}",
+  "@teachingTurnsLang": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "lang": { "type": "String" }
+    }
+  },
+  "viewEvalRecapBtn": "Lihat Evaluasi & Rekap",
+
+  "buddyAiLabel": "Buddy (Murid AI)",
+  "buddyUnderstandingLabel": "Tingkat Pemahaman Buddy",
+  "buddyTypingHint": "Buddy sedang mengetik & mencerna penjelasanmu...",
+  "finishBtn": "Selesai",
+  "endSessionModalTitle": "Akhiri Sesi Belajar?",
+  "endSessionModalQuestion": "Apakah Anda yakin ingin menyelesaikan sesi mengajar ini?",
+  "endSessionModalDesc": "Sistem akan menyusun Rekap Capaian & Evaluasi Pemahaman berdasarkan konsep yang telah Anda ajarkan kepada Buddy.",
+  "continueLearningBtn": "Lanjutkan Belajar",
+  "endAndViewRecapBtn": "Akhiri & Lihat Rekap",
+  "rubricModalTitle": "Rubrik Penilaian AI Buddy",
+  "rubricModalDesc": "Ajarkan dan jelaskan poin-poin berikut agar Buddy paham sepenuhnya:",
+  "viewCriteriaTooltip": "Lihat Kriteria Penilaian",
+  "sessionNotFound": "Sesi belajar tidak ditemukan",
+  "viewThisRecapBtn": "Lihat Rekap Sesi Ini",
+  "recapPageTitle": "Rekap Capaian Belajar",
+  "recapCompletedBadge": "Tuntas Paham (>=80%)",
+  "recapNeedsWorkBadge": "Perlu Diperkuat",
+  "teachingTurnsGiven": "{count} Giliran Mengajar Diberikan",
+  "@teachingTurnsGiven": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "resolvedConceptsTitle": "Konsep yang Berhasil Diluruskan",
+  "unresolvedConceptsTitle": "Konsep yang Masih Perlu Diperkuat",
+  "unresolvedConceptsHint": "Buddy masih bingung di butir-butir ini. Coba ajari lagi dengan analogi baru.",
+  "rereadChatBtn": "Baca Ulang Riwayat Chat",
+  "teachAgainBtn": "Coba Ajari Lagi (Sesi Baru)",
+  "backToHomeBtn": "Kembali ke Beranda Utama",
+  "chatBubbleYou": "KAMU (PENGAJAR)",
+  "chatBubbleBuddy": "BUDDY (MURID AI)",
+
+  "accountSettingsTitle": "Pengaturan Akun",
+  "chooseAvatarTitle": "Pilih Avatar Akun",
+  "profileUpdatedMsg": "Profil berhasil diperbarui!",
+  "profileUpdateError": "Gagal menyimpan profil: {error}",
+  "@profileUpdateError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "accountInfoSection": "Informasi Akun",
+  "enterYourNameHint": "Masukkan nama Anda",
+  "saveChangesBtn": "Simpan Perubahan",
+  "appLanguageSub": "Pilih bahasa antarmuka aplikasi",
+  "securityDataSection": "Keamanan & Data",
+  "changePasswordTitle": "Ubah Kata Sandi",
+  "changePasswordSub": "Ganti kata sandi akun secara berkala",
+  "clearChatHistoryTitle": "Bersihkan Riwayat Chat",
+  "clearChatHistorySub": "Hapus seluruh percakapan dengan Buddy",
+  "clearChatConfirmTitle": "Hapus Riwayat Chat?",
+  "clearChatConfirmBody": "Semua riwayat percakapan dan sesi bimbingan bersama AI Buddy akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.",
+  "yesDeleteAllBtn": "Ya, Hapus Semua",
+  "clearChatSuccess": "Semua riwayat sesi berhasil dibersihkan.",
+  "clearChatError": "Gagal menghapus riwayat: {error}",
+  "@clearChatError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "logoutFullBtn": "Keluar dari Akun (Logout)",
+  "accountSecurityTitle": "Keamanan Akun",
+  "changePasswordDesc": "Masukkan kata sandi baru untuk akun Anda. Pastikan kata sandi kuat dan tidak mudah ditebak.",
+  "newPasswordLabel": "Kata Sandi Baru",
+  "minCharsHint": "Minimal 6 karakter",
+  "confirmPasswordLabel": "Konfirmasi Kata Sandi Baru",
+  "repeatPasswordHint": "Ulangi kata sandi baru",
+  "saveNewPasswordBtn": "Simpan Kata Sandi Baru",
+  "passwordMin6Error": "Kata sandi minimal 6 karakter.",
+  "passwordMismatchError": "Konfirmasi kata sandi tidak cocok.",
+  "passwordChangedMsg": "Kata sandi berhasil diubah!",
+  "passwordChangeError": "Gagal mengubah kata sandi: {error}",
+  "@passwordChangeError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+
+  "teacherPanelSub": "Panel Guru · Struktur Data",
+  "totalStudentsKpi": "Total Siswa",
+  "classAverageKpi": "Rata-rata Kelas",
+  "needsGuidanceKpi": "Perlu Bimbingan",
+  "masteredKpi": "Tuntas Paham",
+  "teacherActionsTitle": "Aksi Manajemen Guru",
+  "manageModulesRubricBtn": "Kelola Modul & Rubrik",
+  "createPracticumTaskBtn": "Buat Tugas Praktikum",
+  "createTaskModalTitle": "Buat Tugas / Pengumuman Baru",
+  "taskTitleLabel": "Judul Tugas / Pengumuman",
+  "taskTitleHint": "Contoh: Praktikum Stack Menggunakan Dart",
+  "taskDescLabel": "Instruksi / Deskripsi",
+  "taskDescHint": "Tuliskan deskripsi tugas untuk siswa...",
+  "categoryLabel": "Kategori:",
+  "dueDateLabel": "Tenggat Pengumpulan: {date}",
+  "@dueDateLabel": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "publishTaskBtn": "Publikasikan Tugas",
+  "taskPublishedMsg": "Tugas berhasil dipublikasikan ke siswa!",
+  "monitoringListTitle": "Monitoring & Daftar Siswa",
+  "filterAll": "Semua ({count})",
+  "@filterAll": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "filterRemedial": "Remedial ({count})",
+  "@filterRemedial": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "filterMastered": "Tuntas ({count})",
+  "@filterMastered": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "noStudentsInCategory": "Tidak ada siswa dalam kategori ini.",
+  "sessionsWithBuddy": "{count} Sesi Pembelajaran Bersama Buddy",
+  "@sessionsWithBuddy": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "viewTranscriptBtn": "Detail Transkrip",
+  "transcriptDetailTitle": "Detail Transkrip & Rapor",
+  "teacherPrivacyDesc": "Privasi Terjaga: Guru hanya melihat capaian rubrik kompetensi & bukti konseptual siswa, tanpa mengintip obrolan mentah.",
+  "sessionHistoryRubricTitle": "Riwayat Sesi Pembelajaran & Rubrik",
+  "noStudentSessions": "Siswa belum memiliki sesi pembelajaran bersama Buddy.",
+  "criteriaAchievementTitle": "Pencapaian Kriteria Pemahaman:",
+  "studentEvidenceQuote": "Bukti Penjelasan Siswa: \"{quote}\"",
+  "@studentEvidenceQuote": {
+    "placeholders": {
+      "quote": { "type": "String" }
+    }
+  },
+
+  "forgotPasswordLink": "Lupa Kata Sandi?",
+  "resetPasswordTitle": "Reset Kata Sandi",
+  "resetPasswordDesc": "Masukkan email akun Anda. Kami akan mengirimkan tautan pemulihan kata sandi ke kotak masuk Anda.",
+  "accountEmailLabel": "Email Akun",
+  "sendLinkBtn": "Kirim Tautan",
+  "resetLinkSentMsg": "Tautan reset kata sandi telah dikirim ke email Anda!",
+
+  "chooseFromGalleryBtn": "Pilih Foto dari Galeri",
+  "chooseFromFilesGalleryBtn": "Pilih Foto (Galeri / File)",
+  "chooseFromCameraBtn": "Ambil Foto dari Kamera",
+  "permissionDeniedMsg": "Izin akses foto/kamera ditolak. Aktifkan di Pengaturan HP.",
+  "removeProfilePhotoBtn": "Hapus Foto Profil",
+  "orChooseEmojiLabel": "Atau pilih avatar emoji:",
+  "uploadingPhotoMsg": "Mengunggah foto profil...",
+  "photoUpdatedMsg": "Foto profil berhasil diperbarui!",
+  "photoRemovedMsg": "Foto profil dihapus.",
+  "photoUploadError": "Gagal mengunggah foto: {error}",
+  "@photoUploadError": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+
+  "arPageTitle": "Mode AR Struktur Data",
+  "arCameraActive": "Kamera ARCore Aktif",
+  "arUnsupportedTitle": "ARCore Tidak Didukung",
+  "arUnsupportedDesc": "Perangkat ini tidak mendukung Google ARCore. Anda tetap dapat mencoba simulasi interaktif di layar.",
+  "arCameraRequired": "Izin kamera diperlukan untuk mengaktifkan tampilan Real AR.",
+  "arGrantCameraBtn": "Izinkan Kamera",
+  "arValueHint": "Nilai elemen (mis. 42, Buku A)",
+  "arCapacityLabel": "Kapasitas: {count}/{max}",
+  "@arCapacityLabel": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+  "arStackEmpty": "Stack masih kosong (0/5). Tekan PUSH untuk menambah data.",
+  "arQueueEmpty": "Queue masih kosong (0/5). Tekan ENQUEUE untuk menambah antrean.",
+  "arPushSuccess": "PUSH \"{item}\" berhasil ditambahkan ke posisi TOP (LIFO).",
+  "@arPushSuccess": {
+    "placeholders": {
+      "item": { "type": "String" }
+    }
+  },
+  "arPopSuccess": "POP mengambil \"{item}\" dari posisi paling atas (Last In, First Out).",
+  "@arPopSuccess": {
+    "placeholders": {
+      "item": { "type": "String" }
+    }
+  },
+  "arEnqueueSuccess": "ENQUEUE \"{item}\" masuk ke antrean posisi REAR (FIFO).",
+  "@arEnqueueSuccess": {
+    "placeholders": {
+      "item": { "type": "String" }
+    }
+  },
+  "arDequeueSuccess": "DEQUEUE mengeluarkan \"{item}\" dari posisi FRONT (First In, First Out).",
+  "@arDequeueSuccess": {
+    "placeholders": {
+      "item": { "type": "String" }
+    }
+  },
+  "arPeekSuccess": "PEEK melihat elemen terdepan/teratas: \"{item}\" tanpa menghapusnya.",
+  "@arPeekSuccess": {
+    "placeholders": {
+      "item": { "type": "String" }
+    }
+  },
+  "arOverflowAlert": "OVERFLOW! Kapasitas maksimal (5/5) sudah penuh.",
+  "arUnderflowAlert": "UNDERFLOW! Struktur data kosong, tidak ada elemen.",
+  "arResetDone": "Simulasi dikosongkan kembali (Reset)."
 }

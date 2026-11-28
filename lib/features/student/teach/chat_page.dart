@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
@@ -31,12 +32,137 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   String? _loadError;
   String? _sendError;
 
-  // Quick prompt chips
-  final List<String> _quickPrompts = [
-    'Bayangkan piring kotor yang terakhir dicuci ditaruh paling atas, piring mana yang diambil duluan?',
-    'Kalau tumpukannya kosong tapi kita paksa ambil data, itu namanya apa Bud?',
-    'Betul! Coba analogikan juga dengan tombol Back di browser internet!',
-  ];
+  List<String> _promptsForTopic(bool isEn) {
+    final t = (_session?.topicTitleId ?? '').toLowerCase();
+    if (t.contains('stack')) {
+      return isEn
+          ? const [
+              'Imagine dirty plates washed last are placed on top — which plate gets picked first?',
+              'If the stack is empty and we force taking data out, what is that called, Bud?',
+              'Right! Now think of the Back button in an internet browser too!',
+            ]
+          : const [
+              'Bayangkan piring kotor yang terakhir dicuci ditaruh paling atas, piring mana yang diambil duluan?',
+              'Kalau tumpukannya kosong tapi kita paksa ambil data, itu namanya apa Bud?',
+              'Betul! Coba analogikan juga dengan tombol Back di browser internet!',
+            ];
+    }
+    if (t.contains('queue')) {
+      return isEn
+          ? const [
+              'Queue follows FIFO: whoever arrives first at the front gets served first.',
+              'Enqueue adds data at the rear, while dequeue removes data from the front.',
+              'Think of a ticket counter line — can the last person leave first?',
+            ]
+          : const [
+              'Queue memakai prinsip FIFO: siapa yang datang duluan di depan akan dilayani duluan.',
+              'Enqueue menambah data di belakang (REAR), sedangkan dequeue mengambil data dari depan (FRONT).',
+              'Bayangkan antrean kasir, apakah orang paling belakang bisa langsung dilayani duluan?',
+            ];
+    }
+    if (t.contains('linked')) {
+      return isEn
+          ? const [
+              'Each node in a Linked List stores data and a next pointer to the following node.',
+              'HEAD points to the first node, and the last node points to null.',
+              'Inserting at the front only updates pointers without shifting other elements!',
+            ]
+          : const [
+              'Setiap node di Linked List menyimpan data dan pointer next ke node berikutnya.',
+              'HEAD menunjuk node pertama, sedangkan node terakhir menunjuk ke null.',
+              'Menyisipkan data di awal cukup mengubah pointer tanpa menggeser elemen lain!',
+            ];
+    }
+    if (t.contains('class')) {
+      return isEn
+          ? const [
+              'A Class is a blueprint, while an Object is a real instance created with new.',
+              'One Class can create many Objects with different attribute values.',
+              'Think of a house blueprint vs actual houses built from it!',
+            ]
+          : const [
+              'Class itu cetak biru (blueprint), sedangkan Object adalah wujud nyata yang dibuat dengan new.',
+              'Dari satu Class kita bisa membuat banyak Object dengan nilai atribut berbeda.',
+              'Ibarat cetakan kue (Class) dan kue-kue nyata yang dihasilkan (Object)!',
+            ];
+    }
+    if (t.contains('enkapsulasi')) {
+      return isEn
+          ? const [
+              'Encapsulation hides internal fields with private so outside code cannot corrupt them.',
+              'We use public Getter and Setter methods to validate changes safely.',
+              'Just like an ATM: you cannot grab cash directly without PIN and balance checks!',
+            ]
+          : const [
+              'Enkapsulasi menyembunyikan atribut pakai private agar tidak diubah sembarangan dari luar.',
+              'Akses data dilakukan lewat Getter dan Setter public yang bisa diberi validasi.',
+              'Seperti mesin ATM, saldo tidak bisa langsung diubah tanpa verifikasi aturan!',
+            ];
+    }
+    if (t.contains('pewarisan')) {
+      return isEn
+          ? const [
+              'Inheritance lets a subclass reuse attributes and methods from a superclass via extends.',
+              'With @Override, a subclass can customize behavior inherited from its parent.',
+              'Think of Vehicle as parent and Car/Motorcycle as children with their own traits!',
+            ]
+          : const [
+              'Pewarisan (extends) membuat subclass mewarisi atribut dan method dari superclass.',
+              'Dengan @Override, subclass bisa menyesuaikan perilaku method warisan induknya.',
+              'Ibarat Hewan sebagai induk, lalu Kucing dan Anjing mewarisi dan punya suara masing-masing!',
+            ];
+    }
+    if (t.contains('list') && t.contains('tuple')) {
+      return isEn
+          ? const [
+              'List is mutable (can be modified/appended), while Tuple is immutable (fixed once created).',
+              'Trying to modify a Tuple element raises a TypeError in Python.',
+              'Use Tuple for constant data like GPS coordinates or fixed config!',
+            ]
+          : const [
+              'List bersifat mutable (bisa diubah/ditambah), sedangkan Tuple immutable (tetap setelah dibuat).',
+              'Jika kita mencoba mengubah elemen Tuple, Python akan memunculkan TypeError.',
+              'Tuple cocok untuk data tetap seperti koordinat GPS atau konstanta konfigurasi!',
+            ];
+    }
+    if (t.contains('dictionary')) {
+      return isEn
+          ? const [
+              'Dictionary stores key-value pairs where every key must be unique.',
+              'Looking up a value by key is super fast using hashing, unlike searching a list.',
+              'Use .get(key, default) to avoid KeyError when a key does not exist!',
+            ]
+          : const [
+              'Dictionary menyimpan pasangan key-value dan setiap key harus unik.',
+              'Mencari nilai berdasarkan key sangat cepat tanpa perlu memeriksa indeks satu per satu.',
+              'Gunakan .get(key, default) supaya aman dan tidak terkena KeyError!',
+            ];
+    }
+    if (t.contains('perulangan')) {
+      return isEn
+          ? const [
+              'Use for loops for known ranges/collections and while loops for condition-based repetition.',
+              'A function (def) uses return to send a value back, whereas print only displays text.',
+              'Make sure a while loop updates its condition so it does not loop forever!',
+            ]
+          : const [
+              'Loop for dipakai untuk rentang/koleksi tertentu, sedangkan while berjalan selama kondisi True.',
+              'Fungsi (def) memakai return untuk mengembalikan nilai, beda dengan print yang cuma menampilkan teks.',
+              'Pastikan kondisi di while berubah agar tidak terjadi infinite loop!',
+            ];
+    }
+    return isEn
+        ? const [
+            'Let me explain the core concept step by step!',
+            'Here is a real-world analogy to make it easier to understand.',
+            'Can you try summarizing what you learned so far, Buddy?',
+          ]
+        : const [
+            'Aku jelaskan konsep utamanya pelan-pelan ya, Buddy!',
+            'Bayangkan analogi di dunia nyata supaya lebih mudah dipahami.',
+            'Coba ulangi dengan bahasamu sendiri, bagian mana yang masih bikin bingung?',
+          ];
+  }
 
   @override
   void initState() {
@@ -163,12 +289,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       if (!mounted) return;
       setState(() {
         _sending = false;
-        _sendError = 'Gagal menghubungi Buddy. Coba lagi dalam beberapa saat.';
+        _sendError = context.l10n.buddyTimeoutError;
       });
     }
   }
 
   Future<void> _confirmEndSession() async {
+    final l10n = context.l10n;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -189,7 +316,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Akhiri Sesi Belajar?',
+                l10n.endSessionModalTitle,
                 style: GoogleFonts.plusJakartaSans(
                   fontWeight: FontWeight.w800,
                   fontSize: 18,
@@ -204,7 +331,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Apakah Anda yakin ingin menyelesaikan sesi mengajar ini?',
+              l10n.endSessionModalQuestion,
               style: GoogleFonts.plusJakartaSans(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
@@ -213,7 +340,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Sistem akan menyusun Rekap Capaian & Evaluasi Pemahaman berdasarkan konsep yang telah Anda ajarkan kepada Buddy.',
+              l10n.endSessionModalDesc,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
                 color: AppTheme.textSecondary,
@@ -226,12 +353,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(
-              'Lanjutkan Belajar',
+              l10n.continueLearningBtn,
               style: GoogleFonts.plusJakartaSans(color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
             ),
           ),
           ClayButton(
-            text: 'Akhiri & Lihat Rekap',
+            text: l10n.endAndViewRecapBtn,
             height: 44,
             onPressed: () => Navigator.pop(ctx, true),
           ),
@@ -247,68 +374,130 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 
   void _showRubricCriteriaModal() {
+    final l10n = context.l10n;
+    final recapFuture =
+        ref.read(sessionRepositoryProvider).getSessionRecap(widget.sessionId);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.checklist_rounded, color: AppTheme.primaryIndigo, size: 22),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Rubrik Penilaian AI Buddy',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.textPrimary,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: FutureBuilder<List<RecapMisconception>>(
+            future: recapFuture,
+            builder: (ctx, snap) {
+              final items = snap.data ?? const <RecapMisconception>[];
+              final isEn = ref.read(languageProvider).languageCode == 'en';
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.checklist_rounded,
+                              color: AppTheme.primaryIndigo,
+                              size: 22,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                l10n.rubricModalTitle,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: AppTheme.textMuted,
+                        ),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    l10n.rubricModalDesc,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  if (snap.connectionState == ConnectionState.waiting)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (items.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        isEn
+                            ? 'No rubric criteria found for this session.'
+                            : 'Belum ada kriteria penilaian untuk sesi ini.',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    )
+                  else
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(ctx).size.height * 0.45,
+                      ),
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: items
+                            .map(
+                              (m) => _buildRubricItem(
+                                '${isEn && m.titleEn != null && m.titleEn!.isNotEmpty ? m.titleEn! : m.titleId} (${m.fulfilledCriteria}/${m.totalCriteria})',
+                                fulfilled: m.isResolved,
+                              ),
+                            )
+                            .toList(),
                       ),
                     ),
-                  ],
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close_rounded, color: AppTheme.textMuted),
-                  onPressed: () => Navigator.pop(ctx),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Ajarkan dan jelaskan poin-poin berikut agar Buddy paham sepenuhnya:',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                color: AppTheme.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 14),
-            _buildRubricItem('Prinsip LIFO (Last In, First Out)'),
-            _buildRubricItem('Operasi PUSH (Menambahkan data ke posisi Top)'),
-            _buildRubricItem('Operasi POP (Mengambil data dari posisi Top)'),
-            _buildRubricItem('Operasi PEEK / TOP (Melihat elemen puncak)'),
-            _buildRubricItem('Kondisi Stack Underflow & Overflow'),
-            const SizedBox(height: 16),
-          ],
+                  const SizedBox(height: 12),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildRubricItem(String text) {
+  Widget _buildRubricItem(String text, {bool fulfilled = false}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.only(bottom: 10.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.check_circle_outline_rounded, color: AppTheme.primaryIndigo, size: 18),
+          Icon(
+            fulfilled
+                ? Icons.check_circle_rounded
+                : Icons.radio_button_unchecked_rounded,
+            color: fulfilled ? AppTheme.successGreen : AppTheme.primaryIndigo,
+            size: 18,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -327,6 +516,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final lang = ref.watch(languageProvider).languageCode;
+    final isEn = lang == 'en';
+
     if (_loading) {
       return const Scaffold(
         backgroundColor: AppTheme.clayCanvas,
@@ -344,11 +537,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _loadError ?? 'Sesi belajar tidak ditemukan',
+                  _loadError ?? l10n.sessionNotFound,
                   style: GoogleFonts.plusJakartaSans(color: AppTheme.dangerRed),
                 ),
                 const SizedBox(height: 12),
-                ClayButton(text: 'Coba Lagi', onPressed: _load),
+                ClayButton(text: l10n.retry, onPressed: _load),
               ],
             ),
           ),
@@ -376,7 +569,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Buddy (Murid AI)',
+                    l10n.buddyAiLabel,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w800,
@@ -384,7 +577,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     ),
                   ),
                   Text(
-                    '${session.localizedTopicTitle('id')} · $meter% Paham',
+                    '${session.localizedTopicTitle(lang)} · ${l10n.understoodBadge(meter)}',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -399,7 +592,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.checklist_rounded, color: AppTheme.primaryIndigo),
-            tooltip: 'Lihat Kriteria Penilaian',
+            tooltip: l10n.viewCriteriaTooltip,
             onPressed: _showRubricCriteriaModal,
           ),
           if (isActive)
@@ -408,7 +601,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               child: TextButton(
                 onPressed: _confirmEndSession,
                 child: Text(
-                  'Selesai',
+                  l10n.finishBtn,
                   style: GoogleFonts.plusJakartaSans(
                     fontWeight: FontWeight.w800,
                     color: AppTheme.accentOrange,
@@ -430,7 +623,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Tingkat Pemahaman Buddy',
+                      l10n.buddyUnderstandingLabel,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -480,7 +673,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
                   const SizedBox(width: 8),
                   Text(
-                    'Buddy sedang mengetik & mencerna penjelasanmu...',
+                    l10n.buddyTypingHint,
                     style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppTheme.textMuted),
                   ),
                 ],
@@ -499,37 +692,48 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
           // Quick prompt chips
           if (isActive && !_sending)
-            Container(
-              height: 40,
-              margin: const EdgeInsets.only(bottom: 6),
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _quickPrompts.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, idx) {
-                  final prompt = _quickPrompts[idx];
-                  return GestureDetector(
-                    onTap: () => _sendMessage(prompt),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.clayBorder, width: 1.2),
-                      ),
-                      child: Text(
-                        prompt,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.primaryIndigo,
+            Builder(
+              builder: (context) {
+                final prompts = _promptsForTopic(isEn);
+                return Container(
+                  height: 40,
+                  margin: const EdgeInsets.only(bottom: 6),
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: prompts.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (context, idx) {
+                      final prompt = prompts[idx];
+                      return GestureDetector(
+                        onTap: () => _sendMessage(prompt),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppTheme.clayBorder,
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Text(
+                            prompt,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.primaryIndigo,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  );
-                },
-              ),
+                      );
+                    },
+                  ),
+                );
+              },
             ),
 
           // Chat Input Area
@@ -553,12 +757,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                       child: TextField(
                         controller: _inputCtrl,
                         maxLength: _maxChars,
-                        decoration: const InputDecoration(
-                          hintText: 'Jelaskan konsep kepada Buddy...',
+                        decoration: InputDecoration(
+                          hintText: l10n.messageHint,
                           border: InputOrigin.none,
                           enabledBorder: InputOrigin.none,
                           focusedBorder: InputOrigin.none,
-                          contentPadding: EdgeInsets.symmetric(vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
                           counterText: '',
                         ),
                         onSubmitted: (_) => _sendMessage(),
@@ -595,7 +799,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               padding: const EdgeInsets.all(16),
               color: Colors.white,
               child: ClayButton(
-                text: 'Lihat Rekap Sesi Ini',
+                text: l10n.viewThisRecapBtn,
                 onPressed: () => context.pushReplacement('/student/recap/${widget.sessionId}'),
               ),
             ),

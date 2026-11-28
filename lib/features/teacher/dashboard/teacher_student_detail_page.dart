@@ -2,15 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/clay_widgets.dart';
+import '../../../core/widgets/user_avatar.dart';
 
 class TeacherStudentDetailPage extends ConsumerStatefulWidget {
-  const TeacherStudentDetailPage({super.key, required this.studentId});
+  const TeacherStudentDetailPage({
+    super.key,
+    required this.studentId,
+    this.courseId,
+  });
 
   final String studentId;
+  final String? courseId;
 
   @override
   ConsumerState<TeacherStudentDetailPage> createState() =>
@@ -29,9 +36,14 @@ class _TeacherStudentDetailPageState
 
   Future<(UserProfile?, List<TeacherStudentSessionDetail>)> _load() async {
     final repo = ref.read(teacherRepositoryProvider);
+    final teacherCourseId =
+        widget.courseId ?? ref.read(currentProfileProvider).value?.courseId;
     final res = await Future.wait([
       repo.getStudentProfile(widget.studentId),
-      repo.getStudentSessionsDetail(widget.studentId),
+      repo.getStudentSessionsDetail(
+        widget.studentId,
+        courseId: teacherCourseId,
+      ),
     ]);
     return (
       res[0] as UserProfile?,
@@ -41,11 +53,14 @@ class _TeacherStudentDetailPageState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final lang = ref.watch(languageProvider).languageCode;
+
     return Scaffold(
       backgroundColor: AppTheme.clayCanvas,
       appBar: AppBar(
         title: Text(
-          'Detail Transkrip & Rapor',
+          l10n.transcriptDetailTitle,
           style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w800,
             fontSize: 18,
@@ -67,7 +82,7 @@ class _TeacherStudentDetailPageState
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  'Terjadi kesalahan: ${snapshot.error}',
+                  l10n.failedToLoad(snapshot.error.toString()),
                   style: GoogleFonts.plusJakartaSans(color: AppTheme.dangerRed),
                 ),
               ),
@@ -86,17 +101,12 @@ class _TeacherStudentDetailPageState
                   padding: const EdgeInsets.all(20),
                   child: Row(
                     children: [
-                      CircleAvatar(
-                        radius: 28,
+                      UserAvatar(
+                        avatarUrl: profile.avatarUrl,
+                        displayName: profile.displayName,
+                        size: 56,
                         backgroundColor: AppTheme.primaryIndigoLight,
-                        child: Text(
-                          profile.displayName.isNotEmpty ? profile.displayName[0] : 'S',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 22,
-                            color: AppTheme.primaryIndigo,
-                          ),
-                        ),
+                        textColor: AppTheme.primaryIndigo,
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -147,7 +157,7 @@ class _TeacherStudentDetailPageState
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Privasi Terjaga: Guru hanya melihat capaian rubrik kompetensi & bukti konseptual siswa, tanpa mengintip obrolan mentah.',
+                        l10n.teacherPrivacyDesc,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           color: const Color(0xFF065F46),
@@ -162,7 +172,7 @@ class _TeacherStudentDetailPageState
               const SizedBox(height: 20),
 
               Text(
-                'Riwayat Sesi Pembelajaran & Rubrik',
+                l10n.sessionHistoryRubricTitle,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -176,7 +186,7 @@ class _TeacherStudentDetailPageState
                   padding: const EdgeInsets.all(24),
                   child: Center(
                     child: Text(
-                      'Siswa belum memiliki sesi pembelajaran bersama Buddy.',
+                      l10n.noStudentSessions,
                       style: GoogleFonts.plusJakartaSans(
                         color: AppTheme.textSecondary,
                         fontSize: 13.5,
@@ -199,16 +209,21 @@ class _TeacherStudentDetailPageState
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                s.localizedTopicTitle('id'),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.textPrimary,
+                              Expanded(
+                                child: Text(
+                                  s.localizedTopicTitle(lang),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.textPrimary,
+                                  ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               ClayPill(
-                                label: '${s.meterPercent}% Paham',
+                                label: l10n.understoodBadge(s.meterPercent),
                                 color: isCompleted ? AppTheme.successGreenLight : const Color(0xFFFFF7ED),
                                 textColor: isCompleted ? AppTheme.successGreen : AppTheme.accentOrange,
                               ),
@@ -222,7 +237,7 @@ class _TeacherStudentDetailPageState
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '${s.studentInputs} Giliran Mengajar · ${s.startedAt.day}/${s.startedAt.month}/${s.startedAt.year}',
+                            '${l10n.teachingTurnsGiven(s.studentInputs)} · ${s.startedAt.day}/${s.startedAt.month}/${s.startedAt.year}',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               color: AppTheme.textMuted,
@@ -231,7 +246,7 @@ class _TeacherStudentDetailPageState
                           if (d.criteriaItems.isNotEmpty) ...[
                             const Divider(height: 24, color: AppTheme.clayBorder),
                             Text(
-                              'Pencapaian Kriteria Pemahaman:',
+                              l10n.criteriaAchievementTitle,
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
@@ -275,7 +290,7 @@ class _TeacherStudentDetailPageState
                                       if (c.evidenceQuote != null && c.evidenceQuote!.isNotEmpty) ...[
                                         const SizedBox(height: 6),
                                         Text(
-                                          'Bukti Penjelasan Siswa: "${c.evidenceQuote}"',
+                                          l10n.studentEvidenceQuote(c.evidenceQuote!),
                                           style: GoogleFonts.plusJakartaSans(
                                             fontSize: 11.5,
                                             fontStyle: FontStyle.italic,

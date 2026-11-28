@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
@@ -27,8 +28,11 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
 
   Future<(List<Course>, List<TeacherTopic>)> _load() async {
     final repo = ref.read(teacherRepositoryProvider);
+    final myCourseId = ref.read(currentProfileProvider).value?.courseId;
     final courses = await repo.getCourses();
-    if (_selectedCourseId == null && courses.isNotEmpty) {
+    if (myCourseId != null) {
+      _selectedCourseId = myCourseId;
+    } else if (_selectedCourseId == null && courses.isNotEmpty) {
       _selectedCourseId = courses.first.id;
     }
     final topics = await repo.getAllContent(courseId: _selectedCourseId);
@@ -39,6 +43,47 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
     setState(() {
       _future = _load();
     });
+  }
+
+  Future<bool> _confirmDeleteDialog(String title, String message) async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.dangerRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
+  Future<void> _runGuardedAction(Future<void> Function() action) async {
+    try {
+      await action();
+      _reload();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal memproses aksi: $e'),
+          backgroundColor: AppTheme.dangerRed,
+        ),
+      );
+    }
   }
 
   Future<void> _showTopicDialog({TeacherTopic? existing}) async {
@@ -419,47 +464,40 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Course Selector
+              // Assigned Course Banner (Locked to teacher's subject)
               if (courses.isNotEmpty) ...[
-                const Text(
-                  'Kelola Konten Untuk Mata Pelajaran:',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: courses.map((c) {
-                    final isCurrent = c.id == _selectedCourseId;
-                    return ChoiceChip(
-                      label: Text(
-                        c.titleId,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight:
-                              isCurrent ? FontWeight.w700 : FontWeight.w500,
-                          color: isCurrent
-                              ? Colors.white
-                              : const Color(0xFF334155),
+                Builder(builder: (context) {
+                  final assigned = courses
+                      .where((c) => c.id == _selectedCourseId)
+                      .firstOrNull;
+                  if (assigned == null) return const SizedBox.shrink();
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryIndigoLight,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.clayBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.menu_book_rounded,
+                            color: AppTheme.primaryIndigo, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Mata Pelajaran: ${assigned.titleId}',
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
                         ),
-                      ),
-                      selected: isCurrent,
-                      selectedColor: AppTheme.primaryTeal,
-                      onSelected: (val) {
-                        if (val) {
-                          setState(() {
-                            _selectedCourseId = c.id;
-                            _future = _load();
-                          });
-                        }
-                      },
-                    );
-                  }).toList(),
-                ),
+                      ],
+                    ),
+                  );
+                }),
                 const SizedBox(height: 16),
               ],
 
@@ -528,12 +566,11 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
                     children: [
                       Switch(
                         value: topic.isActive,
-                        onChanged: (v) async {
-                          await ref
+                        onChanged: (v) => _runGuardedAction(
+                          () => ref
                               .read(teacherRepositoryProvider)
-                              .toggleTopicActive(topic.id, v);
-                          _reload();
-                        },
+                              .toggleTopicActive(topic.id, v),
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),
@@ -559,10 +596,16 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(
                           onPressed: () async {
-                            await ref
-                                .read(teacherRepositoryProvider)
-                                .deleteTopicIfUnused(topic.id);
-                            _reload();
+                            final ok = await _confirmDeleteDialog(
+                              'Hapus Topik?',
+                              'Yakin ingin menghapus topik "${topic.titleId}" beserta seluruh miskonsepsi dan kriterianya?',
+                            );
+                            if (!ok) return;
+                            await _runGuardedAction(
+                              () => ref
+                                  .read(teacherRepositoryProvider)
+                                  .deleteTopicIfUnused(topic.id),
+                            );
                           },
                           icon: const Icon(
                             Icons.delete_outline,
@@ -610,10 +653,16 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
                                     color: AppTheme.dangerRed,
                                   ),
                                   onPressed: () async {
-                                    await ref
-                                        .read(teacherRepositoryProvider)
-                                        .deleteMisconception(m.id);
-                                    _reload();
+                                    final ok = await _confirmDeleteDialog(
+                                      'Hapus Miskonsepsi?',
+                                      'Yakin ingin menghapus miskonsepsi ini beserta seluruh kriterianya?',
+                                    );
+                                    if (!ok) return;
+                                    await _runGuardedAction(
+                                      () => ref
+                                          .read(teacherRepositoryProvider)
+                                          .deleteMisconception(m.id),
+                                    );
                                   },
                                 ),
                               ],
@@ -649,10 +698,16 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
                                         color: AppTheme.dangerRed,
                                       ),
                                       onPressed: () async {
-                                        await ref
-                                            .read(teacherRepositoryProvider)
-                                            .deleteCriterion(c.id);
-                                        _reload();
+                                        final ok = await _confirmDeleteDialog(
+                                          'Hapus Kriteria?',
+                                          'Yakin ingin menghapus kriteria penilaian ini?',
+                                        );
+                                        if (!ok) return;
+                                        await _runGuardedAction(
+                                          () => ref
+                                              .read(teacherRepositoryProvider)
+                                              .deleteCriterion(c.id),
+                                        );
                                       },
                                     ),
                                   ],
@@ -693,6 +748,20 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
                             _showMisconceptionDialog(topicId: topic.id),
                         icon: const Icon(Icons.add),
                         label: Text(l10n.addMisconception),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          final encodedTitle = Uri.encodeComponent(topic.titleId);
+                          context.push(
+                            '/teacher/content/${topic.id}/questions?title=$encodedTitle',
+                          );
+                        },
+                        icon: const Icon(Icons.quiz_outlined),
+                        label: const Text('Kelola Soal Pre/Post-Test'),
                       ),
                     ),
                   ],

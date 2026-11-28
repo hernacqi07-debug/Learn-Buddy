@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../l10n/l10n_ext.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 
@@ -59,7 +60,9 @@ class ChatBubble extends StatelessWidget {
                     const Text('🤖 ', style: TextStyle(fontSize: 12)),
                   ],
                   Text(
-                    isStudent ? 'KAMU (PENGAJAR)' : 'BUDDY (MURID AI)',
+                    isStudent
+                        ? context.l10n.chatBubbleYou
+                        : context.l10n.chatBubbleBuddy,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w800,

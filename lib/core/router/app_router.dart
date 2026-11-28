@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/admin/presentation/admin_dashboard_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/register_page.dart';
 import '../../features/settings/presentation/change_password_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/student/announcements/announcements_page.dart';
+import '../../features/student/ar/ar_page.dart';
+import '../../features/student/chat_hub/student_chat_hub_page.dart';
 import '../../features/student/history/history_page.dart';
 import '../../features/student/home/student_home_page.dart';
 import '../../features/student/materi/materi_page.dart';
@@ -13,6 +16,7 @@ import '../../features/student/quiz/quiz_page.dart';
 import '../../features/student/teach/chat_page.dart';
 import '../../features/student/teach/recap_page.dart';
 import '../../features/teacher/content/teacher_content_page.dart';
+import '../../features/teacher/content/teacher_questions_page.dart';
 import '../../features/teacher/dashboard/teacher_dashboard_page.dart';
 import '../../features/teacher/dashboard/teacher_student_detail_page.dart';
 import '../models/models.dart';
@@ -46,18 +50,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return isAuthRoute ? null : '/login';
       }
 
-      final homeRoute =
-          profile.role == UserRole.teacher ? '/teacher' : '/student';
+      final homeRoute = switch (profile.role) {
+        UserRole.admin => '/admin',
+        UserRole.teacher => '/teacher',
+        UserRole.student => '/student',
+      };
 
       if (isAuthRoute) {
         return homeRoute;
       }
 
-      if (profile.role == UserRole.student && path.startsWith('/teacher')) {
+      if (profile.role == UserRole.student &&
+          (path.startsWith('/teacher') || path.startsWith('/admin'))) {
         return '/student';
       }
-      if (profile.role == UserRole.teacher && path.startsWith('/student')) {
+      if (profile.role == UserRole.teacher &&
+          (path.startsWith('/student') || path.startsWith('/admin'))) {
         return '/teacher';
+      }
+      if (profile.role == UserRole.admin &&
+          (path.startsWith('/student') || path.startsWith('/teacher'))) {
+        return '/admin';
       }
 
       return null;
@@ -74,6 +87,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/student',
         builder: (context, state) => const StudentHomePage(),
+      ),
+      GoRoute(
+        path: '/student/chat',
+        builder: (context, state) => const StudentChatHubPage(),
+      ),
+      GoRoute(
+        path: '/student/ar',
+        builder: (context, state) => const ArPage(),
       ),
       GoRoute(
         path: '/student/materi/:topicId',
@@ -119,10 +140,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/teacher/content/:topicId/questions',
+        builder: (context, state) => TeacherQuestionsPage(
+          topicId: state.pathParameters['topicId']!,
+          topicTitle: state.uri.queryParameters['title'],
+        ),
+      ),
+      GoRoute(
         path: '/teacher/student/:studentId',
         builder: (context, state) => TeacherStudentDetailPage(
           studentId: state.pathParameters['studentId']!,
+          courseId: state.uri.queryParameters['courseId'],
         ),
+      ),
+      GoRoute(
+        path: '/admin',
+        builder: (context, state) => const AdminDashboardPage(),
       ),
       GoRoute(
         path: '/settings',

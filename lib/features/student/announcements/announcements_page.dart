@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
@@ -32,12 +33,13 @@ class _AnnouncementsPageState extends ConsumerState<AnnouncementsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppTheme.clayCanvas,
       bottomNavigationBar: const StudentBottomNav(currentIndex: 1),
       appBar: AppBar(
         title: Text(
-          'Papan Pengumuman & Tugas',
+          l10n.announcementsTitle,
           style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w800,
             fontSize: 18,
@@ -63,7 +65,7 @@ class _AnnouncementsPageState extends ConsumerState<AnnouncementsPage> {
           if (snapshot.hasError) {
             return Center(
               child: Text(
-                'Terjadi kesalahan: ${snapshot.error}',
+                l10n.failedToLoad(snapshot.error.toString()),
                 style: GoogleFonts.plusJakartaSans(color: AppTheme.dangerRed),
               ),
             );
@@ -80,7 +82,7 @@ class _AnnouncementsPageState extends ConsumerState<AnnouncementsPage> {
                     const Icon(Icons.campaign_outlined, size: 52, color: AppTheme.textMuted),
                     const SizedBox(height: 12),
                     Text(
-                      'Belum ada tugas atau pengumuman dari guru.',
+                      l10n.noAnnouncementsYet,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -108,6 +110,7 @@ class _AnnouncementsPageState extends ConsumerState<AnnouncementsPage> {
   }
 
   Widget _buildAssignmentCard(Assignment item) {
+    final l10n = context.l10n;
     Color badgeBg;
     Color badgeText;
     IconData icon;
@@ -118,19 +121,19 @@ class _AnnouncementsPageState extends ConsumerState<AnnouncementsPage> {
         badgeBg = const Color(0xFFEEF2FF);
         badgeText = AppTheme.primaryIndigo;
         icon = Icons.terminal_rounded;
-        typeLabel = 'Tugas Praktikum';
+        typeLabel = l10n.typePracticum;
         break;
       case 'announcement':
         badgeBg = const Color(0xFFFEF3C7);
         badgeText = const Color(0xFFB45309);
         icon = Icons.campaign_rounded;
-        typeLabel = 'Pengumuman Kelas';
+        typeLabel = l10n.typeAnnouncement;
         break;
       default:
         badgeBg = const Color(0xFFECFDF5);
         badgeText = const Color(0xFF047857);
         icon = Icons.assignment_rounded;
-        typeLabel = 'Tugas Individu';
+        typeLabel = l10n.typeIndividual;
     }
 
     return ClayCard(
@@ -192,7 +195,9 @@ class _AnnouncementsPageState extends ConsumerState<AnnouncementsPage> {
                     radius: 12,
                     backgroundColor: AppTheme.primaryIndigo.withValues(alpha: 0.15),
                     child: Text(
-                      (item.teacherName ?? 'G')[0],
+                      (item.teacherName ?? '').trim().isNotEmpty
+                          ? item.teacherName!.trim()[0].toUpperCase()
+                          : 'G',
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -202,7 +207,7 @@ class _AnnouncementsPageState extends ConsumerState<AnnouncementsPage> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    item.teacherName ?? 'Guru Pengampu',
+                    item.teacherName ?? l10n.defaultTeacherName,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
@@ -227,7 +232,7 @@ class _AnnouncementsPageState extends ConsumerState<AnnouncementsPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Buka Modul',
+                          l10n.openModuleBtn,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,

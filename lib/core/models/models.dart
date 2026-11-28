@@ -1,9 +1,15 @@
 enum UserRole {
   student,
-  teacher;
+  teacher,
+  admin;
 
-  static UserRole fromString(String value) =>
-      value == 'teacher' ? UserRole.teacher : UserRole.student;
+  static UserRole fromString(String value) {
+    return switch (value) {
+      'admin' => UserRole.admin,
+      'teacher' => UserRole.teacher,
+      _ => UserRole.student,
+    };
+  }
 }
 
 enum SessionStatus {
@@ -54,6 +60,8 @@ class UserProfile {
     this.nisn,
     this.className,
     this.schoolName,
+    this.avatarUrl,
+    this.courseId,
   });
 
   final String id;
@@ -64,6 +72,8 @@ class UserProfile {
   final String? nisn;
   final String? className;
   final String? schoolName;
+  final String? avatarUrl;
+  final String? courseId;
 
   factory UserProfile.fromMap(Map<String, dynamic> map) {
     return UserProfile(
@@ -75,6 +85,8 @@ class UserProfile {
       nisn: map['nisn'] as String?,
       className: map['class_name'] as String?,
       schoolName: map['school_name'] as String?,
+      avatarUrl: map['avatar_url'] as String?,
+      courseId: map['course_id'] as String?,
     );
   }
 }
@@ -484,6 +496,7 @@ class TeacherStudentSummary {
     required this.sessionCount,
     required this.lowestOrBestMeter,
     required this.latestMeter,
+    this.avatarUrl,
   });
 
   final String studentId;
@@ -492,6 +505,7 @@ class TeacherStudentSummary {
   final int sessionCount;
   final int lowestOrBestMeter;
   final int latestMeter;
+  final String? avatarUrl;
 }
 
 class TeacherSessionCriterionItem {
@@ -557,7 +571,8 @@ class Assignment {
       topicId: map['topic_id'] as String?,
       title: (map['title'] as String?) ?? '',
       description: (map['description'] as String?) ?? '',
-      type: (map['type'] as String?) ?? 'assignment',
+      type: (map['type'] as String?) ??
+          (map['category'] == 'pengumuman' ? 'announcement' : 'praktikum'),
       dueDate: map['due_date'] != null ? DateTime.tryParse(map['due_date'] as String) : null,
       createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String) : DateTime.now(),
       isActive: (map['is_active'] as bool?) ?? true,
@@ -590,20 +605,46 @@ class Question {
   final String? explanation;
   final int sortOrder;
 
+  String get correctOptionLetter =>
+      const ['A', 'B', 'C', 'D'][correctIndex.clamp(0, 3)];
+
   factory Question.fromMap(Map<String, dynamic> map) {
     final rawOptions = map['options'];
-    List<String> parsedOptions = [];
-    if (rawOptions is List) {
+    List<String> parsedOptions;
+    if (rawOptions is List && rawOptions.isNotEmpty) {
       parsedOptions = rawOptions.map((e) => e.toString()).toList();
+    } else {
+      parsedOptions = [
+        (map['option_a'] as String?) ?? '',
+        (map['option_b'] as String?) ?? '',
+        (map['option_c'] as String?) ?? '',
+        (map['option_d'] as String?) ?? '',
+      ];
     }
+
+    int parsedCorrectIndex;
+    if (map['correct_index'] != null) {
+      parsedCorrectIndex = (map['correct_index'] as num).toInt();
+    } else {
+      final letter = (map['correct_option'] as String?)?.trim().toUpperCase();
+      parsedCorrectIndex = switch (letter) {
+        'A' => 0,
+        'B' => 1,
+        'C' => 2,
+        'D' => 3,
+        _ => 0,
+      };
+    }
+
     return Question(
       id: map['id'] as String,
       topicId: map['topic_id'] as String,
-      quizType: (map['quiz_type'] as String?) ?? 'pre_test',
+      quizType:
+          (map['type'] as String?) ?? (map['quiz_type'] as String?) ?? 'pre_test',
       questionText: (map['question_text'] as String?) ?? '',
       codeSnippet: map['code_snippet'] as String?,
       options: parsedOptions,
-      correctIndex: (map['correct_index'] as num?)?.toInt() ?? 0,
+      correctIndex: parsedCorrectIndex.clamp(0, 3),
       explanation: map['explanation'] as String?,
       sortOrder: (map['sort_order'] as num?)?.toInt() ?? 1,
     );
@@ -618,6 +659,7 @@ class QuizAttempt {
     required this.quizType,
     required this.score,
     required this.totalQuestions,
+    this.correctAnswers = 0,
     required this.answers,
     required this.createdAt,
   });
@@ -628,6 +670,7 @@ class QuizAttempt {
   final String quizType;
   final int score;
   final int totalQuestions;
+  final int correctAnswers;
   final Map<String, dynamic> answers;
   final DateTime createdAt;
 
@@ -639,8 +682,11 @@ class QuizAttempt {
       quizType: (map['quiz_type'] as String?) ?? 'pre_test',
       score: (map['score'] as num?)?.toInt() ?? 0,
       totalQuestions: (map['total_questions'] as num?)?.toInt() ?? 0,
+      correctAnswers: (map['correct_answers'] as num?)?.toInt() ?? 0,
       answers: (map['answers'] as Map<String, dynamic>?) ?? {},
-      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String) : DateTime.now(),
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'] as String)
+          : DateTime.now(),
     );
   }
 }

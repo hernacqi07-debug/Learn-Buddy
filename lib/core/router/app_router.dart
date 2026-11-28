@@ -16,6 +16,7 @@ import '../../features/student/quiz/quiz_page.dart';
 import '../../features/student/teach/chat_page.dart';
 import '../../features/student/teach/recap_page.dart';
 import '../../features/teacher/content/teacher_content_page.dart';
+import '../../features/teacher/content/teacher_questions_page.dart';
 import '../../features/teacher/dashboard/teacher_dashboard_page.dart';
 import '../../features/teacher/dashboard/teacher_student_detail_page.dart';
 import '../models/models.dart';
@@ -136,6 +137,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/teacher/content',
         builder: (context, state) => TeacherContentPage(
           initialCourseId: state.uri.queryParameters['courseId'],
+        ),
+      ),
+      GoRoute(
+        path: '/teacher/content/:topicId/questions',
+        builder: (context, state) => TeacherQuestionsPage(
+          topicId: state.pathParameters['topicId']!,
+          topicTitle: state.uri.queryParameters['title'],
         ),
       ),
       GoRoute(

@@ -165,7 +165,7 @@ class SessionRepository {
     try {
       var query = _client.from('questions').select().eq('topic_id', topicId);
       if (quizType != null) {
-        query = query.eq('quiz_type', quizType);
+        query = query.eq('type', quizType);
       }
       final rows = await query.order('sort_order', ascending: true);
       return (rows as List)
@@ -181,10 +181,14 @@ class SessionRepository {
     required String quizType,
     required int score,
     required int totalQuestions,
+    int? correctAnswers,
     required Map<String, dynamic> answers,
   }) async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) throw Exception('User not logged in');
+
+    final resolvedCorrectAnswers = correctAnswers ??
+        answers.values.where((v) => v is Map && v['is_correct'] == true).length;
 
     final data = {
       'student_id': uid,
@@ -192,6 +196,7 @@ class SessionRepository {
       'quiz_type': quizType,
       'score': score,
       'total_questions': totalQuestions,
+      'correct_answers': resolvedCorrectAnswers,
       'answers': answers,
     };
 
@@ -218,6 +223,44 @@ class SessionRepository {
           .toList();
     } catch (_) {
       return [];
+    }
+  }
+
+  Future<List<QuizAttempt>> getAllMyQuizAttempts() async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return [];
+    try {
+      final rows = await _client
+          .from('quiz_attempts')
+          .select()
+          .eq('student_id', uid)
+          .order('created_at', ascending: false);
+      return (rows as List)
+          .map((e) => QuizAttempt.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<Map<String, ({int preCount, int postCount})>>
+      getQuestionCountsByTopic() async {
+    try {
+      final rows = await _client.from('questions').select('topic_id, type');
+      final counts = <String, ({int preCount, int postCount})>{};
+      for (final r in (rows as List)) {
+        final m = Map<String, dynamic>.from(r as Map);
+        final tid = m['topic_id'] as String?;
+        final type = (m['type'] as String?) ?? 'pre_test';
+        if (tid == null) continue;
+        final prev = counts[tid] ?? (preCount: 0, postCount: 0);
+        counts[tid] = type == 'post_test'
+            ? (preCount: prev.preCount, postCount: prev.postCount + 1)
+            : (preCount: prev.preCount + 1, postCount: prev.postCount);
+      }
+      return counts;
+    } catch (_) {
+      return {};
     }
   }
 

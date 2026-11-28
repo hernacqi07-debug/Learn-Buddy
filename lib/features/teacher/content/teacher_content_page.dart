@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/models/models.dart';
 import '../../../core/providers/app_providers.dart';
@@ -689,6 +690,20 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
                             _showMisconceptionDialog(topicId: topic.id),
                         icon: const Icon(Icons.add),
                         label: Text(l10n.addMisconception),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          final encodedTitle = Uri.encodeComponent(topic.titleId);
+                          context.push(
+                            '/teacher/content/${topic.id}/questions?title=$encodedTitle',
+                          );
+                        },
+                        icon: const Icon(Icons.quiz_outlined),
+                        label: const Text('Kelola Soal Pre/Post-Test'),
                       ),
                     ),
                   ],

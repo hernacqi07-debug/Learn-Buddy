@@ -25,10 +25,18 @@ class StudentHomePage extends ConsumerStatefulWidget {
 
 class _StudentHomePageState extends ConsumerState<StudentHomePage> {
   late Future<
-    (List<Course>, List<TopicSummary>, List<LearningSession>, List<Assignment>)
+    (
+      List<Course>,
+      List<TopicSummary>,
+      List<LearningSession>,
+      List<Assignment>,
+      List<QuizAttempt>,
+      Map<String, ({int preCount, int postCount})>,
+    )
   >
   _loadFuture;
   String? _selectedCourseId;
+  String? _selectedTopicId;
 
   @override
   void initState() {
@@ -37,7 +45,14 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
   }
 
   Future<
-    (List<Course>, List<TopicSummary>, List<LearningSession>, List<Assignment>)
+    (
+      List<Course>,
+      List<TopicSummary>,
+      List<LearningSession>,
+      List<Assignment>,
+      List<QuizAttempt>,
+      Map<String, ({int preCount, int postCount})>,
+    )
   >
   _fetchData() async {
     final repo = ref.read(sessionRepositoryProvider);
@@ -46,6 +61,8 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
       repo.getTopicsSummary(),
       repo.getMySessions(),
       repo.getAssignments(),
+      repo.getAllMyQuizAttempts(),
+      repo.getQuestionCountsByTopic(),
     ]);
 
     final courses = results[0] as List<Course>;
@@ -58,6 +75,8 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
       results[1] as List<TopicSummary>,
       results[2] as List<LearningSession>,
       results[3] as List<Assignment>,
+      results[4] as List<QuizAttempt>,
+      results[5] as Map<String, ({int preCount, int postCount})>,
     );
   }
 
@@ -89,9 +108,37 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
     }
   }
 
-  void _showTopicsDialog(List<TopicSummary> topics) {
+  void _showTopicsDialog(
+    List<Course> courses,
+    List<TopicSummary> topics, {
+    String? title,
+    void Function(TopicSummary topic)? onTopicSelected,
+  }) {
     final lang = ref.read(languageProvider).languageCode;
+    final isEn = lang == 'en';
     final l10n = context.l10n;
+
+    final grouped = <String, List<TopicSummary>>{};
+    for (final t in topics) {
+      final cid = t.courseId ?? '__other__';
+      grouped.putIfAbsent(cid, () => []).add(t);
+    }
+
+    final sections = <(String, List<TopicSummary>)>[];
+    for (final c in courses) {
+      final list = grouped.remove(c.id);
+      if (list != null && list.isNotEmpty) {
+        sections.add((c.localizedTitle(lang), list));
+      }
+    }
+    if (grouped.isNotEmpty) {
+      final rest = grouped.values.expand((e) => e).toList();
+      sections.add((isEn ? 'Other Topics' : 'Topik Lainnya', rest));
+    }
+
+    final activeId =
+        _selectedTopicId ?? (topics.isNotEmpty ? topics.first.id : null);
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -100,7 +147,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
           side: const BorderSide(color: AppTheme.clayBorder, width: 2),
         ),
         title: Text(
-          l10n.topicsSectionTitle,
+          title ?? (isEn ? 'Topics by Subject' : 'Topik per Mata Pelajaran'),
           style: GoogleFonts.plusJakartaSans(
             fontWeight: FontWeight.w800,
             fontSize: 18,
@@ -109,49 +156,125 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
         ),
         content: SizedBox(
           width: double.maxFinite,
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: topics.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (ctx, i) {
-              final topic = topics[i];
-              return Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      topic.localizedTitle(lang),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        color: AppTheme.textPrimary,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (int sIdx = 0; sIdx < sections.length; sIdx++) ...[
+                  if (sIdx > 0) const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.menu_book_rounded,
+                        size: 16,
+                        color: AppTheme.primaryIndigo,
                       ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: topic.bestMeterPercent >= 80
-                          ? AppTheme.successGreenLight
-                          : AppTheme.primaryIndigoLight,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${topic.bestMeterPercent}%',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12.5,
-                        color: topic.bestMeterPercent >= 80
-                            ? AppTheme.successGreen
-                            : AppTheme.primaryIndigo,
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          sections[sIdx].$1,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.5,
+                            color: AppTheme.primaryIndigo,
+                          ),
+                        ),
                       ),
-                    ),
+                      Text(
+                        '${sections[sIdx].$2.length} ${isEn ? 'Topics' : 'Topik'}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 8),
+                  ...sections[sIdx].$2.map((topic) {
+                    final isSelected = topic.id == activeId;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          setState(() {
+                            _selectedTopicId = topic.id;
+                            _selectedCourseId = topic.courseId;
+                          });
+                          Navigator.pop(ctx);
+                          onTopicSelected?.call(topic);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppTheme.primaryIndigoLight
+                                : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppTheme.primaryIndigo
+                                  : AppTheme.clayBorder,
+                              width: isSelected ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              if (isSelected) ...[
+                                const Icon(
+                                  Icons.check_circle_rounded,
+                                  size: 16,
+                                  color: AppTheme.primaryIndigo,
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  topic.localizedTitle(lang),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13.5,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: topic.bestMeterPercent >= 80
+                                      ? AppTheme.successGreenLight
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${topic.bestMeterPercent}%',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12,
+                                    color: topic.bestMeterPercent >= 80
+                                        ? AppTheme.successGreen
+                                        : AppTheme.primaryIndigo,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
                 ],
-              );
-            },
+              ],
+            ),
           ),
         ),
         actions: [
@@ -284,6 +407,8 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                 List<TopicSummary>,
                 List<LearningSession>,
                 List<Assignment>,
+                List<QuizAttempt>,
+                Map<String, ({int preCount, int postCount})>,
               )
             >(
               future: _loadFuture,
@@ -313,10 +438,16 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                   );
                 }
 
+                final courses = snapshot.data!.$1;
                 final topics = snapshot.data!.$2;
-            final sessions = snapshot.data!.$3;
+                final sessions = snapshot.data!.$3;
+                final quizAttempts = snapshot.data!.$5;
+                final questionCounts = snapshot.data!.$6;
                 final currentTopic = topics.isNotEmpty
-                    ? topics.first
+                    ? topics.firstWhere(
+                        (t) => t.id == _selectedTopicId,
+                        orElse: () => topics.first,
+                      )
                     : const TopicSummary(
                         id: 'stack-default',
                         titleId: 'Stack (Tumpukan)',
@@ -330,6 +461,39 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                         bestMeterPercent: 0,
                         hasCompleted80: false,
                       );
+                final currentCourseTitle = courses
+                        .where((c) => c.id == currentTopic.courseId)
+                        .map((c) => c.localizedTitle(lang))
+                        .firstOrNull ??
+                    (isEn ? 'Data Structures' : 'Struktur Data');
+                final preAttempts = quizAttempts
+                    .where(
+                      (a) =>
+                          a.topicId == currentTopic.id &&
+                          a.quizType == 'pre_test',
+                    )
+                    .toList();
+                final postAttempts = quizAttempts
+                    .where(
+                      (a) =>
+                          a.topicId == currentTopic.id &&
+                          a.quizType == 'post_test',
+                    )
+                    .toList();
+                final hasDonePreTest = preAttempts.isNotEmpty;
+                final hasDonePostTest = postAttempts.isNotEmpty;
+                final bestPreScore = preAttempts.isEmpty
+                    ? 0
+                    : preAttempts
+                        .map((a) => a.score)
+                        .reduce((a, b) => a > b ? a : b);
+                final bestPostScore = postAttempts.isEmpty
+                    ? 0
+                    : postAttempts
+                        .map((a) => a.score)
+                        .reduce((a, b) => a > b ? a : b);
+                final topicCounts =
+                    questionCounts[currentTopic.id] ?? (preCount: 0, postCount: 0);
 
                 // Ringkasan Progres dari data asli.
                 final completedSessions = sessions
@@ -618,22 +782,46 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                           label: 'Chat Buddy',
                           icon: Icons.chat_bubble_rounded,
                           iconBg: const Color(0xFFEEF2FF),
-                          onTap: () => _startNewSessionDialog(currentTopic),
+                          onTap: () => _showTopicsDialog(
+                            courses,
+                            topics,
+                            title: isEn
+                                ? 'Select Topic for Buddy'
+                                : 'Pilih Topik Chat Buddy',
+                            onTopicSelected: _startNewSessionDialog,
+                          ),
                         ),
                         _buildFeatureTile(
                           label: isEn ? 'Modules' : 'Materi',
                           icon: Icons.menu_book_rounded,
                           iconBg: const Color(0xFFFFF7ED),
-                          onTap: () => context.push(
-                            '/student/materi/${currentTopic.id}',
+                          onTap: () => _showTopicsDialog(
+                            courses,
+                            topics,
+                            title: isEn
+                                ? 'Select Module by Subject'
+                                : 'Pilih Materi per Mata Pelajaran',
+                            onTopicSelected: (t) => context.push(
+                              '/student/materi/${t.id}',
+                            ),
                           ),
                         ),
                         _buildFeatureTile(
                           label: isEn ? 'Practice' : 'Latihan Soal',
                           icon: Icons.assignment_turned_in_rounded,
                           iconBg: const Color(0xFFFEF9C3),
-                          onTap: () => context.push(
-                            '/student/quiz/${currentTopic.id}?type=pre_test',
+                          onTap: () => _showTopicsDialog(
+                            courses,
+                            topics,
+                            title: isEn
+                                ? 'Select Quiz by Subject'
+                                : 'Pilih Latihan Soal per Mapel',
+                            onTopicSelected: (t) async {
+                              await context.push(
+                                '/student/quiz/${t.id}?type=pre_test',
+                              );
+                              if (mounted) _reload();
+                            },
                           ),
                         ),
                         _buildFeatureTile(
@@ -646,7 +834,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                           label: isEn ? 'Topics' : 'Topik',
                           icon: Icons.layers_rounded,
                           iconBg: const Color(0xFFE0F2FE),
-                          onTap: () => _showTopicsDialog(topics),
+                          onTap: () => _showTopicsDialog(courses, topics),
                         ),
                         _buildFeatureTile(
                           label: isEn ? 'History' : 'Riwayat',
@@ -694,25 +882,48 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                           ],
                         ),
                         Flexible(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => _showTopicsDialog(
+                              courses,
+                              topics,
+                              title: isEn
+                                  ? 'Switch Quiz Topic'
+                                  : 'Ganti Topik Latihan Soal',
                             ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryIndigoLight,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              isEn
-                                  ? 'Topic: ${currentTopic.localizedTitle(lang)}'
-                                  : 'Topik: ${currentTopic.localizedTitle(lang)}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.primaryIndigo,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryIndigoLight,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      isEn
+                                          ? 'Topic: ${currentTopic.localizedTitle(lang)}'
+                                          : 'Topik: ${currentTopic.localizedTitle(lang)}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.primaryIndigo,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    size: 15,
+                                    color: AppTheme.primaryIndigo,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
@@ -726,21 +937,30 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                         children: [
                           InkWell(
                             borderRadius: BorderRadius.circular(16),
-                            onTap: () => context.push(
-                              '/student/quiz/${currentTopic.id}?type=pre_test',
-                            ),
+                            onTap: () async {
+                              await context.push(
+                                '/student/quiz/${currentTopic.id}?type=pre_test',
+                              );
+                              if (mounted) _reload();
+                            },
                             child: Row(
                               children: [
                                 Container(
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primaryIndigoLight,
+                                    color: hasDonePreTest
+                                        ? AppTheme.successGreenLight
+                                        : AppTheme.primaryIndigoLight,
                                     borderRadius: BorderRadius.circular(14),
                                   ),
-                                  child: const Icon(
-                                    Icons.play_lesson_rounded,
-                                    color: AppTheme.primaryIndigo,
+                                  child: Icon(
+                                    hasDonePreTest
+                                        ? Icons.check_circle_rounded
+                                        : Icons.play_lesson_rounded,
+                                    color: hasDonePreTest
+                                        ? AppTheme.successGreen
+                                        : AppTheme.primaryIndigo,
                                     size: 24,
                                   ),
                                 ),
@@ -761,8 +981,8 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                                       const SizedBox(height: 2),
                                       Text(
                                         isEn
-                                            ? '5 questions • Before learning'
-                                            : '5 soal • Sebelum belajar',
+                                            ? '${topicCounts.preCount} questions • Before learning'
+                                            : '${topicCounts.preCount} soal • Sebelum belajar',
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 12.5,
                                           color: AppTheme.textSecondary,
@@ -771,34 +991,91 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                                     ],
                                   ),
                                 ),
-                                ClayButton(
-                                  text: isEn ? 'Start' : 'Mulai',
-                                  height: 40,
-                                  onPressed: () => context.push(
-                                    '/student/quiz/${currentTopic.id}?type=pre_test',
+                                if (hasDonePreTest)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 7,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.successGreenLight,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: AppTheme.successGreen,
+                                        width: 1.2,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      isEn
+                                          ? 'Done • $bestPreScore'
+                                          : 'Selesai • $bestPreScore',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppTheme.successGreen,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  ClayButton(
+                                    text: isEn ? 'Start' : 'Mulai',
+                                    height: 40,
+                                    onPressed: () async {
+                                      await context.push(
+                                        '/student/quiz/${currentTopic.id}?type=pre_test',
+                                      );
+                                      if (mounted) _reload();
+                                    },
                                   ),
-                                ),
                               ],
                             ),
                           ),
                           const Divider(height: 28, color: AppTheme.clayBorder),
                           InkWell(
                             borderRadius: BorderRadius.circular(16),
-                            onTap: () => context.push(
-                              '/student/quiz/${currentTopic.id}?type=post_test',
-                            ),
+                            onTap: () async {
+                              if (!hasDonePreTest) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      isEn
+                                          ? 'Please complete the Pre-Test first to unlock Post-Test.'
+                                          : 'Selesaikan Pre-Test terlebih dahulu untuk membuka Post-Test.',
+                                    ),
+                                    backgroundColor: AppTheme.accentOrange,
+                                  ),
+                                );
+                                return;
+                              }
+                              await context.push(
+                                '/student/quiz/${currentTopic.id}?type=post_test',
+                              );
+                              if (mounted) _reload();
+                            },
                             child: Row(
                               children: [
                                 Container(
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF1F5F9),
+                                    color: !hasDonePreTest
+                                        ? const Color(0xFFF1F5F9)
+                                        : hasDonePostTest
+                                            ? AppTheme.successGreenLight
+                                            : AppTheme.primaryIndigoLight,
                                     borderRadius: BorderRadius.circular(14),
                                   ),
-                                  child: const Icon(
-                                    Icons.task_alt_rounded,
-                                    color: AppTheme.textSecondary,
+                                  child: Icon(
+                                    !hasDonePreTest
+                                        ? Icons.lock_outline_rounded
+                                        : hasDonePostTest
+                                            ? Icons.check_circle_rounded
+                                            : Icons.task_alt_rounded,
+                                    color: !hasDonePreTest
+                                        ? AppTheme.textSecondary
+                                        : hasDonePostTest
+                                            ? AppTheme.successGreen
+                                            : AppTheme.primaryIndigo,
                                     size: 24,
                                   ),
                                 ),
@@ -813,14 +1090,16 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 14.5,
                                           fontWeight: FontWeight.w800,
-                                          color: AppTheme.textPrimary,
+                                          color: hasDonePreTest
+                                              ? AppTheme.textPrimary
+                                              : AppTheme.textSecondary,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
                                         isEn
-                                            ? '5 questions • After learning'
-                                            : '5 soal • Setelah belajar',
+                                            ? '${topicCounts.postCount} questions • After learning'
+                                            : '${topicCounts.postCount} soal • Setelah belajar',
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 12.5,
                                           color: AppTheme.textSecondary,
@@ -829,37 +1108,74 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                                     ],
                                   ),
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF1F5F9),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.lock_rounded,
-                                        size: 13,
-                                        color: AppTheme.textSecondary,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        isEn
-                                            ? 'Complete Pre-Test first'
-                                            : 'Selesaikan Pre-Test dulu',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
+                                if (!hasDonePreTest)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.lock_rounded,
+                                          size: 13,
                                           color: AppTheme.textSecondary,
                                         ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          isEn
+                                              ? 'Complete Pre-Test first'
+                                              : 'Selesaikan Pre-Test dulu',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                else if (hasDonePostTest)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 7,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.successGreenLight,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: AppTheme.successGreen,
+                                        width: 1.2,
                                       ),
-                                    ],
+                                    ),
+                                    child: Text(
+                                      isEn
+                                          ? 'Done • $bestPostScore'
+                                          : 'Selesai • $bestPostScore',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppTheme.successGreen,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  ClayButton(
+                                    text: isEn ? 'Start' : 'Mulai',
+                                    height: 40,
+                                    onPressed: () async {
+                                      await context.push(
+                                        '/student/quiz/${currentTopic.id}?type=post_test',
+                                      );
+                                      if (mounted) _reload();
+                                    },
                                   ),
-                                ),
                               ],
                             ),
                           ),
@@ -893,7 +1209,7 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      isEn ? 'Data Structures' : 'Struktur Data',
+                                      currentCourseTitle,
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 13,
                                         color: AppTheme.textSecondary,

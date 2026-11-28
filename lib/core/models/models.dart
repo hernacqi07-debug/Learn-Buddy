@@ -605,20 +605,46 @@ class Question {
   final String? explanation;
   final int sortOrder;
 
+  String get correctOptionLetter =>
+      const ['A', 'B', 'C', 'D'][correctIndex.clamp(0, 3)];
+
   factory Question.fromMap(Map<String, dynamic> map) {
     final rawOptions = map['options'];
-    List<String> parsedOptions = [];
-    if (rawOptions is List) {
+    List<String> parsedOptions;
+    if (rawOptions is List && rawOptions.isNotEmpty) {
       parsedOptions = rawOptions.map((e) => e.toString()).toList();
+    } else {
+      parsedOptions = [
+        (map['option_a'] as String?) ?? '',
+        (map['option_b'] as String?) ?? '',
+        (map['option_c'] as String?) ?? '',
+        (map['option_d'] as String?) ?? '',
+      ];
     }
+
+    int parsedCorrectIndex;
+    if (map['correct_index'] != null) {
+      parsedCorrectIndex = (map['correct_index'] as num).toInt();
+    } else {
+      final letter = (map['correct_option'] as String?)?.trim().toUpperCase();
+      parsedCorrectIndex = switch (letter) {
+        'A' => 0,
+        'B' => 1,
+        'C' => 2,
+        'D' => 3,
+        _ => 0,
+      };
+    }
+
     return Question(
       id: map['id'] as String,
       topicId: map['topic_id'] as String,
-      quizType: (map['quiz_type'] as String?) ?? 'pre_test',
+      quizType:
+          (map['type'] as String?) ?? (map['quiz_type'] as String?) ?? 'pre_test',
       questionText: (map['question_text'] as String?) ?? '',
       codeSnippet: map['code_snippet'] as String?,
       options: parsedOptions,
-      correctIndex: (map['correct_index'] as num?)?.toInt() ?? 0,
+      correctIndex: parsedCorrectIndex.clamp(0, 3),
       explanation: map['explanation'] as String?,
       sortOrder: (map['sort_order'] as num?)?.toInt() ?? 1,
     );
@@ -633,6 +659,7 @@ class QuizAttempt {
     required this.quizType,
     required this.score,
     required this.totalQuestions,
+    this.correctAnswers = 0,
     required this.answers,
     required this.createdAt,
   });
@@ -643,6 +670,7 @@ class QuizAttempt {
   final String quizType;
   final int score;
   final int totalQuestions;
+  final int correctAnswers;
   final Map<String, dynamic> answers;
   final DateTime createdAt;
 
@@ -654,8 +682,11 @@ class QuizAttempt {
       quizType: (map['quiz_type'] as String?) ?? 'pre_test',
       score: (map['score'] as num?)?.toInt() ?? 0,
       totalQuestions: (map['total_questions'] as num?)?.toInt() ?? 0,
+      correctAnswers: (map['correct_answers'] as num?)?.toInt() ?? 0,
       answers: (map['answers'] as Map<String, dynamic>?) ?? {},
-      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String) : DateTime.now(),
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'] as String)
+          : DateTime.now(),
     );
   }
 }

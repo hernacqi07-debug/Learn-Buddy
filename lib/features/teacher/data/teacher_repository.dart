@@ -411,18 +411,49 @@ class TeacherRepository {
 
   // --- Real Data: Bank Soal & Evaluasi ---
   Future<List<Question>> getTopicQuestions(String topicId) async {
-    try {
-      final rows = await _client
-          .from('questions')
-          .select()
-          .eq('topic_id', topicId)
-          .order('sort_order', ascending: true);
-      return (rows as List)
-          .map((e) => Question.fromMap(Map<String, dynamic>.from(e as Map)))
-          .toList();
-    } catch (_) {
-      return [];
-    }
+    final rows = await _client
+        .from('questions')
+        .select()
+        .eq('topic_id', topicId)
+        .order('sort_order', ascending: true)
+        .order('created_at', ascending: true);
+    return (rows as List)
+        .map((e) => Question.fromMap(Map<String, dynamic>.from(e as Map)))
+        .toList();
+  }
+
+  String _optionLetterFromIndex(int index) =>
+      const ['A', 'B', 'C', 'D'][index.clamp(0, 3)];
+
+  Map<String, dynamic> _buildQuestionPayload({
+    required String quizType,
+    required String questionText,
+    String? codeSnippet,
+    required List<String> options,
+    required int correctIndex,
+    String? explanation,
+    required int sortOrder,
+  }) {
+    final padded = List<String>.generate(
+      4,
+      (i) => i < options.length ? options[i].trim() : '',
+    );
+    final trimmedCode = codeSnippet?.trim();
+    final trimmedExp = explanation?.trim();
+    return {
+      'type': quizType,
+      'question_text': questionText.trim(),
+      'code_snippet':
+          (trimmedCode != null && trimmedCode.isNotEmpty) ? trimmedCode : null,
+      'option_a': padded[0],
+      'option_b': padded[1],
+      'option_c': padded[2],
+      'option_d': padded[3],
+      'correct_option': _optionLetterFromIndex(correctIndex),
+      'explanation':
+          (trimmedExp != null && trimmedExp.isNotEmpty) ? trimmedExp : null,
+      'sort_order': sortOrder,
+    };
   }
 
   Future<void> createQuestion({
@@ -433,17 +464,41 @@ class TeacherRepository {
     required List<String> options,
     required int correctIndex,
     String? explanation,
+    int sortOrder = 1,
   }) async {
-    await _client.from('questions').insert({
-      'topic_id': topicId,
-      'quiz_type': quizType,
-      'question_text': questionText.trim(),
-      'code_snippet': codeSnippet?.trim(),
-      'options': options,
-      'correct_index': correctIndex,
-      'explanation': explanation?.trim(),
-      'sort_order': 1,
-    });
+    final payload = _buildQuestionPayload(
+      quizType: quizType,
+      questionText: questionText,
+      codeSnippet: codeSnippet,
+      options: options,
+      correctIndex: correctIndex,
+      explanation: explanation,
+      sortOrder: sortOrder,
+    );
+    payload['topic_id'] = topicId;
+    await _client.from('questions').insert(payload);
+  }
+
+  Future<void> updateQuestion({
+    required String id,
+    required String quizType,
+    required String questionText,
+    String? codeSnippet,
+    required List<String> options,
+    required int correctIndex,
+    String? explanation,
+    int sortOrder = 1,
+  }) async {
+    final payload = _buildQuestionPayload(
+      quizType: quizType,
+      questionText: questionText,
+      codeSnippet: codeSnippet,
+      options: options,
+      correctIndex: correctIndex,
+      explanation: explanation,
+      sortOrder: sortOrder,
+    );
+    await _client.from('questions').update(payload).eq('id', id);
   }
 
   Future<void> deleteQuestion(String questionId) async {

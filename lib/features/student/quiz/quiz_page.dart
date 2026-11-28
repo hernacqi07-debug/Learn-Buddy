@@ -102,6 +102,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         quizType: _currentType,
         score: calculatedScore,
         totalQuestions: questions.length,
+        correctAnswers: correctCount,
         answers: answerLog,
       );
 
@@ -160,6 +161,11 @@ class _QuizPageState extends ConsumerState<QuizPage> {
           }
 
           final (questions, pastAttempts) = snapshot.data!;
+          final hasCompletedPreTest =
+              pastAttempts.any((a) => a.quizType == 'pre_test') ||
+              (_isSubmitted && _currentType == 'pre_test');
+          final isPostTestLocked =
+              _currentType == 'post_test' && !hasCompletedPreTest;
 
           return Column(
             children: [
@@ -185,15 +191,30 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                               ? AppTheme.primaryIndigo
                               : AppTheme.clayBorder,
                           child: Center(
-                            child: Text(
-                              l10n.preTestTab,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: _currentType == 'pre_test'
-                                    ? Colors.white
-                                    : AppTheme.textPrimary,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (hasCompletedPreTest) ...[
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    size: 15,
+                                    color: _currentType == 'pre_test'
+                                        ? Colors.white
+                                        : AppTheme.successGreen,
+                                  ),
+                                  const SizedBox(width: 5),
+                                ],
+                                Text(
+                                  l10n.preTestTab,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                    color: _currentType == 'pre_test'
+                                        ? Colors.white
+                                        : AppTheme.textPrimary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -203,6 +224,17 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
+                          if (!hasCompletedPreTest) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Selesaikan Pre-Test terlebih dahulu untuk membuka Post-Test.',
+                                ),
+                                backgroundColor: AppTheme.accentOrange,
+                              ),
+                            );
+                            return;
+                          }
                           if (_currentType != 'post_test') {
                             setState(() => _currentType = 'post_test');
                             _fetchQuizData();
@@ -212,20 +244,37 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           color: _currentType == 'post_test'
                               ? AppTheme.primaryIndigo
-                              : Colors.white,
+                              : hasCompletedPreTest
+                                  ? Colors.white
+                                  : const Color(0xFFF1F5F9),
                           borderColor: _currentType == 'post_test'
                               ? AppTheme.primaryIndigo
                               : AppTheme.clayBorder,
                           child: Center(
-                            child: Text(
-                              l10n.postTestTab,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                                color: _currentType == 'post_test'
-                                    ? Colors.white
-                                    : AppTheme.textPrimary,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (!hasCompletedPreTest) ...[
+                                  const Icon(
+                                    Icons.lock_rounded,
+                                    size: 14,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                  const SizedBox(width: 5),
+                                ],
+                                Text(
+                                  l10n.postTestTab,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                    color: _currentType == 'post_test'
+                                        ? Colors.white
+                                        : hasCompletedPreTest
+                                            ? AppTheme.textPrimary
+                                            : AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -235,8 +284,52 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 ),
               ),
 
-              // Questions List or Empty State
-              if (questions.isEmpty)
+              // Locked state, Empty State, Result Screen, or Questions List
+              if (isPostTestLocked)
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.lock_outline_rounded,
+                            size: 52,
+                            color: AppTheme.textMuted,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Post-Test Terkunci',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Selesaikan Pre-Test terlebih dahulu sebelum mengerjakan Post-Test.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13.5,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ClayButton(
+                            text: 'Kerjakan Pre-Test',
+                            onPressed: () {
+                              setState(() => _currentType = 'pre_test');
+                              _fetchQuizData();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else if (questions.isEmpty)
                 Expanded(
                   child: Center(
                     child: Padding(
@@ -309,7 +402,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                 ),
 
               // Bottom Navigation bar during quiz
-              if (questions.isNotEmpty && !_isSubmitted)
+              if (questions.isNotEmpty && !_isSubmitted && !isPostTestLocked)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   decoration: BoxDecoration(

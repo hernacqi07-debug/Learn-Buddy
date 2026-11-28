@@ -66,6 +66,8 @@ Deno.serve(async (req: Request) => {
       const role = String(body.role ?? "student").trim();
       const schoolName = body.school_name ? String(body.school_name).trim() : null;
       const className = body.class_name ? String(body.class_name).trim() : null;
+      const courseId =
+        role === "teacher" && body.course_id ? String(body.course_id).trim() : null;
 
       if (!email || !password || password.length < 6 || !displayName) {
         return jsonResponse(
@@ -101,6 +103,7 @@ Deno.serve(async (req: Request) => {
           language_pref: "id",
           school_name: schoolName,
           class_name: className,
+          course_id: courseId,
         })
         .select()
         .single();
@@ -116,6 +119,8 @@ Deno.serve(async (req: Request) => {
     if (action === "update_role") {
       const userId = String(body.user_id ?? "").trim();
       const role = String(body.role ?? "").trim();
+      const courseId =
+        role === "teacher" && body.course_id ? String(body.course_id).trim() : null;
 
       if (!userId || !["student", "teacher", "admin"].includes(role)) {
         return jsonResponse({ error: "Parameter user_id atau role tidak valid." }, 400);
@@ -126,7 +131,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: updated, error: updateErr } = await adminClient
         .from("profiles")
-        .update({ role })
+        .update({ role, course_id: courseId })
         .eq("id", userId)
         .select()
         .single();

@@ -9,6 +9,32 @@ import '../../../core/l10n/l10n_ext.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/clay_widgets.dart';
 
+class _ArMenuSpec {
+  const _ArMenuSpec({
+    required this.badgeTitle,
+    required this.presets,
+    required this.defaultInput,
+    required this.primaryLabel,
+    required this.primaryAction,
+    required this.accentLabel,
+    required this.accentAction,
+    required this.secondaryLabel,
+    required this.secondaryAction,
+    this.showInput = true,
+  });
+
+  final String badgeTitle;
+  final List<String> presets;
+  final String defaultInput;
+  final String primaryLabel;
+  final String primaryAction;
+  final String accentLabel;
+  final String accentAction;
+  final String secondaryLabel;
+  final String secondaryAction;
+  final bool showInput;
+}
+
 class ArPage extends ConsumerStatefulWidget {
   const ArPage({super.key});
 
@@ -20,20 +46,121 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
   static const _checkChannel = MethodChannel('learn_buddy/ar_check');
   static const _channel = MethodChannel('learn_buddy/ar_channel');
 
-  final _inputCtrl = TextEditingController(text: 'Data 1');
+  final _inputCtrl = TextEditingController(text: 'Data 2');
 
   bool _cameraGranted = false;
   bool _checkingPerms = true;
   bool _arSupported = false;
   bool _markerDetected = false;
-  String? _activeObjectType; // e.g. 'stack', 'queue', null when no 3D object is active
+  String? _activeObjectType;
   String? _nativeStatus;
 
   List<String> _items = [];
-  final int _maxCapacity = 5;
-  int _counter = 1;
   String? _feedbackText;
   bool _isAlert = false;
+
+  static const Map<String, _ArMenuSpec> _menuSpecs = {
+    'stack': _ArMenuSpec(
+      badgeTitle: 'Stack (LIFO)',
+      presets: ['Data A', '42', 'Buku 1'],
+      defaultInput: 'Data 2',
+      primaryLabel: 'PUSH',
+      primaryAction: 'push',
+      accentLabel: 'POP',
+      accentAction: 'pop',
+      secondaryLabel: 'PEEK',
+      secondaryAction: 'peek',
+    ),
+    'queue': _ArMenuSpec(
+      badgeTitle: 'Queue (FIFO)',
+      presets: ['Antre A', 'Antre B', 'VIP'],
+      defaultInput: 'Antre 3',
+      primaryLabel: 'ENQUEUE',
+      primaryAction: 'enqueue',
+      accentLabel: 'DEQUEUE',
+      accentAction: 'dequeue',
+      secondaryLabel: 'PEEK',
+      secondaryAction: 'peek',
+    ),
+    'linked_list': _ArMenuSpec(
+      badgeTitle: 'Linked List',
+      presets: ['N:30', 'N:40', 'N:99'],
+      defaultInput: 'N:30',
+      primaryLabel: 'INS HEAD',
+      primaryAction: 'insert_head',
+      accentLabel: 'INS TAIL',
+      accentAction: 'insert_tail',
+      secondaryLabel: 'DEL HEAD',
+      secondaryAction: 'delete_head',
+    ),
+    'java_class': _ArMenuSpec(
+      badgeTitle: 'Java: Class & Object',
+      presets: ['Sedan', 'SUV', 'Truk'],
+      defaultInput: 'Mobil 2',
+      primaryLabel: 'NEW OBJ',
+      primaryAction: 'new_object',
+      accentLabel: 'UBAH OBJ',
+      accentAction: 'mutate_obj',
+      secondaryLabel: 'INFO',
+      secondaryAction: 'inspect',
+    ),
+    'java_encap': _ArMenuSpec(
+      badgeTitle: 'Java: Encapsulation',
+      presets: ['250', '500', '999'],
+      defaultInput: '250',
+      primaryLabel: 'SETTER',
+      primaryAction: 'setter',
+      accentLabel: 'GETTER',
+      accentAction: 'getter',
+      secondaryLabel: 'HACK!',
+      secondaryAction: 'direct_hack',
+    ),
+    'java_inherit': _ArMenuSpec(
+      badgeTitle: 'Java: Inheritance',
+      presets: ['Ikan', 'Kelinci', 'Elang'],
+      defaultInput: 'Ikan',
+      primaryLabel: '+ CHILD',
+      primaryAction: 'add_child',
+      accentLabel: 'OVERRIDE',
+      accentAction: 'override_method',
+      secondaryLabel: 'INFO',
+      secondaryAction: 'inspect',
+    ),
+    'py_list_tuple': _ArMenuSpec(
+      badgeTitle: 'Python: List vs Tuple',
+      presets: ['Apel', 'Jeruk', '99'],
+      defaultInput: 'Apel',
+      primaryLabel: 'APPEND',
+      primaryAction: 'list_append',
+      accentLabel: 'POP LIST',
+      accentAction: 'list_pop',
+      secondaryLabel: 'EDIT TUPLE',
+      secondaryAction: 'try_edit_tuple',
+    ),
+    'py_dict': _ArMenuSpec(
+      badgeTitle: 'Python: Dictionary',
+      presets: ['umur:17', 'nilai:95', 'nama:Ani'],
+      defaultInput: 'nilai:95',
+      primaryLabel: 'SET KEY',
+      primaryAction: 'set_pair',
+      accentLabel: 'LOOKUP',
+      accentAction: 'lookup',
+      secondaryLabel: 'DEL KEY',
+      secondaryAction: 'del_pair',
+    ),
+    'py_loop': _ArMenuSpec(
+      badgeTitle: 'Python: Loop & Def',
+      presets: [],
+      defaultInput: '',
+      primaryLabel: 'NEXT ITER',
+      primaryAction: 'next_iter',
+      accentLabel: 'CALL DEF',
+      accentAction: 'call_func',
+      secondaryLabel: 'RESET',
+      secondaryAction: 'reset',
+      showInput: false,
+    ),
+  };
 
   @override
   void initState() {
@@ -61,6 +188,8 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
       final objectType = args?['objectType'] as String?;
       final status = args?['status'] as String?;
       final rawItems = (args?['items'] as List?)?.map((e) => e.toString()).toList();
+      final switchedTopic = detected && objectType != null && objectType != _activeObjectType;
+
       setState(() {
         _markerDetected = detected;
         _activeObjectType = detected ? objectType : null;
@@ -69,9 +198,13 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
         }
         if (rawItems != null) {
           _items = rawItems;
-          if (_items.isNotEmpty && _counter <= _items.length) {
-            _counter = _items.length + 1;
-            _inputCtrl.text = 'Data $_counter';
+        }
+        if (switchedTopic) {
+          final spec = _menuSpecs[objectType];
+          _feedbackText = null;
+          _isAlert = false;
+          if (spec != null) {
+            _inputCtrl.text = spec.defaultInput;
           }
         }
       });
@@ -128,74 +261,45 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _handlePush() async {
+  Future<void> _sendAction(String action) async {
     if (!Platform.isAndroid || !_cameraGranted || !_arSupported) return;
-    final val = _inputCtrl.text.trim();
-    if (val.isEmpty) return;
+    if (action == 'reset') {
+      await _handleReset();
+      return;
+    }
     try {
-      final res = await _channel.invokeMapMethod<String, dynamic>('push', {'label': val});
-      if (res != null) _applyNativeResponse(res, val);
-    } catch (_) {}
-  }
-
-  Future<void> _handlePop() async {
-    if (!Platform.isAndroid || !_cameraGranted || !_arSupported) return;
-    try {
-      final res = await _channel.invokeMapMethod<String, dynamic>('pop');
-      if (res != null) _applyNativeResponse(res, null);
-    } catch (_) {}
-  }
-
-  Future<void> _handlePeek() async {
-    if (!Platform.isAndroid || !_cameraGranted || !_arSupported) return;
-    try {
-      final res = await _channel.invokeMapMethod<String, dynamic>('peek');
-      if (res != null) _applyNativeResponse(res, null);
+      final res = await _channel.invokeMapMethod<String, dynamic>('action', {
+        'action': action,
+        'label': _inputCtrl.text.trim(),
+      });
+      if (res != null && mounted) {
+        final event = res['event'] as String? ?? 'ok';
+        final rawItems = (res['items'] as List?)?.map((e) => e.toString()).toList() ?? [];
+        final message = res['message'] as String?;
+        setState(() {
+          _items = rawItems;
+          _isAlert = event == 'overflow' || event == 'underflow';
+          if (message != null && message.isNotEmpty) {
+            _feedbackText = message;
+          }
+        });
+      }
     } catch (_) {}
   }
 
   Future<void> _handleReset() async {
-    final l10n = context.l10n;
     if (!Platform.isAndroid || !_cameraGranted || !_arSupported) return;
     try {
-      await _channel.invokeMethod('reset');
-    } catch (_) {}
-    setState(() {
-      _items.clear();
-      _counter = 1;
-      _inputCtrl.text = 'Data 1';
-      _isAlert = false;
-      _feedbackText = l10n.arResetDone;
-    });
-  }
-
-  void _applyNativeResponse(Map<String, dynamic> res, String? pushedVal) {
-    final l10n = context.l10n;
-    final event = res['event'] as String? ?? 'ok';
-    final rawItems = (res['items'] as List?)?.map((e) => e.toString()).toList() ?? [];
-    final affected = res['affectedItem'] as String? ?? pushedVal ?? '';
-
-    setState(() {
-      _items = rawItems;
-      if (event == 'overflow') {
-        _isAlert = true;
-        _feedbackText = l10n.arOverflowAlert;
-      } else if (event == 'underflow') {
-        _isAlert = true;
-        _feedbackText = l10n.arUnderflowAlert;
-      } else if (event == 'peek') {
-        _isAlert = false;
-        _feedbackText = l10n.arPeekSuccess(affected);
-      } else if (pushedVal != null) {
-        _isAlert = false;
-        _counter++;
-        _inputCtrl.text = 'Data $_counter';
-        _feedbackText = l10n.arPushSuccess(affected);
-      } else {
-        _isAlert = false;
-        _feedbackText = l10n.arPopSuccess(affected);
+      final res = await _channel.invokeMapMethod<String, dynamic>('reset');
+      if (res != null && mounted) {
+        final rawItems = (res['items'] as List?)?.map((e) => e.toString()).toList() ?? [];
+        setState(() {
+          _items = rawItems;
+          _isAlert = false;
+          _feedbackText = context.l10n.arResetDone;
+        });
       }
-    });
+    } catch (_) {}
   }
 
   @override
@@ -208,14 +312,13 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
         ? l10n.arPageTitle
         : (_nativeStatus ??
             (_markerDetected
-                ? (isEn ? 'Stack Marker Detected (3D Active)' : 'Marker Stack Terdeteksi (3D Aktif)')
-                : (isEn ? 'Point camera at Stack Marker' : 'Arahkan kamera ke Marker Stack')));
+                ? (isEn ? '3D Object Active' : 'Objek 3D Aktif')
+                : (isEn ? 'Point camera at AR Marker' : 'Arahkan kamera ke Marker AR')));
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       body: Stack(
         children: [
-          // 1. Real ARCore Camera + 3D OpenGL Overlay
           if (arActive)
             const Positioned.fill(
               child: AndroidView(
@@ -236,7 +339,6 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
               ),
             ),
 
-          // 2. Top Bar + Bottom Stack 3D Controls HUD
           SafeArea(
             child: Column(
               children: [
@@ -396,14 +498,13 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
                   ),
                 ),
 
-                // Dynamic Context-Aware Simulation Menu:
-                // Hidden (clean camera) until a 3D object is detected, then adapts to _activeObjectType.
+                // Context-Aware Simulation Menu: hidden until a 3D object appears
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 240),
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
                   child: (arActive && _markerDetected && _activeObjectType != null)
-                      ? _buildSimulationMenuForObject(l10n, _activeObjectType!)
+                      ? _buildDynamicSimulationMenu(_activeObjectType!)
                       : const SizedBox.shrink(),
                 ),
               ],
@@ -414,20 +515,12 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
     );
   }
 
-  /// Renders the simulation controls matching the currently detected 3D AR object.
-  /// Extensible for future 3D objects (e.g. 'queue', 'linked_list', 'tree', etc.).
-  Widget _buildSimulationMenuForObject(dynamic l10n, String objectType) {
-    switch (objectType) {
-      case 'stack':
-        return _buildStackSimulationMenu(l10n);
-      default:
-        return const SizedBox.shrink();
-    }
-  }
+  Widget _buildDynamicSimulationMenu(String objectType) {
+    final spec = _menuSpecs[objectType];
+    if (spec == null) return const SizedBox.shrink();
 
-  Widget _buildStackSimulationMenu(dynamic l10n) {
     return Container(
-      key: const ValueKey('ar_menu_stack'),
+      key: ValueKey('ar_menu_$objectType'),
       margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -453,40 +546,37 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               ClayPill(
-                label: 'Stack • ${l10n.arCapacityLabel(_items.length, _maxCapacity)}',
-                color: _items.length >= _maxCapacity
-                    ? const Color(0xFFFEF2F2)
-                    : AppTheme.primaryIndigoLight,
-                textColor: _items.length >= _maxCapacity
-                    ? AppTheme.dangerRed
-                    : AppTheme.primaryIndigo,
+                label: '${spec.badgeTitle} • ${_items.length}',
+                color: AppTheme.primaryIndigoLight,
+                textColor: AppTheme.primaryIndigo,
               ),
-              Row(
-                children: ['Data A', '42', 'Buku 1'].map((preset) {
-                  return Padding(
-                    padding: const EdgeInsets.only(left: 6),
-                    child: GestureDetector(
-                      onTap: () => _inputCtrl.text = preset,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.clayCanvas,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppTheme.clayBorder),
-                        ),
-                        child: Text(
-                          preset,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.textSecondary,
+              if (spec.presets.isNotEmpty)
+                Row(
+                  children: spec.presets.map((preset) {
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 5),
+                      child: GestureDetector(
+                        onTap: () => _inputCtrl.text = preset,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.clayCanvas,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.clayBorder),
+                          ),
+                          child: Text(
+                            preset,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textSecondary,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
+                    );
+                  }).toList(),
+                ),
             ],
           ),
           if (_feedbackText != null) ...[
@@ -510,38 +600,40 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
               ),
             ),
           ],
-          const SizedBox(height: 8),
-          ClayTextField(
-            controller: _inputCtrl,
-            hintText: l10n.arValueHint,
-            prefixIcon: Icons.label_outline_rounded,
-          ),
+          if (spec.showInput) ...[
+            const SizedBox(height: 8),
+            ClayTextField(
+              controller: _inputCtrl,
+              hintText: context.l10n.arValueHint,
+              prefixIcon: Icons.label_outline_rounded,
+            ),
+          ],
           const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: ClayButton(
-                  text: 'PUSH',
+                  text: spec.primaryLabel,
                   height: 44,
-                  onPressed: _handlePush,
+                  onPressed: () => _sendAction(spec.primaryAction),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: ClayButton(
-                  text: 'POP',
+                  text: spec.accentLabel,
                   isAccent: true,
                   height: 44,
-                  onPressed: _handlePop,
+                  onPressed: () => _sendAction(spec.accentAction),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: ClayButton(
-                  text: 'PEEK',
+                  text: spec.secondaryLabel,
                   isPrimary: false,
                   height: 44,
-                  onPressed: _handlePeek,
+                  onPressed: () => _sendAction(spec.secondaryAction),
                 ),
               ),
             ],

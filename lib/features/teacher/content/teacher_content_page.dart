@@ -27,8 +27,11 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
 
   Future<(List<Course>, List<TeacherTopic>)> _load() async {
     final repo = ref.read(teacherRepositoryProvider);
+    final myCourseId = ref.read(currentProfileProvider).value?.courseId;
     final courses = await repo.getCourses();
-    if (_selectedCourseId == null && courses.isNotEmpty) {
+    if (myCourseId != null) {
+      _selectedCourseId = myCourseId;
+    } else if (_selectedCourseId == null && courses.isNotEmpty) {
       _selectedCourseId = courses.first.id;
     }
     final topics = await repo.getAllContent(courseId: _selectedCourseId);
@@ -419,47 +422,40 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Course Selector
+              // Assigned Course Banner (Locked to teacher's subject)
               if (courses.isNotEmpty) ...[
-                const Text(
-                  'Kelola Konten Untuk Mata Pelajaran:',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: courses.map((c) {
-                    final isCurrent = c.id == _selectedCourseId;
-                    return ChoiceChip(
-                      label: Text(
-                        c.titleId,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight:
-                              isCurrent ? FontWeight.w700 : FontWeight.w500,
-                          color: isCurrent
-                              ? Colors.white
-                              : const Color(0xFF334155),
+                Builder(builder: (context) {
+                  final assigned = courses
+                      .where((c) => c.id == _selectedCourseId)
+                      .firstOrNull;
+                  if (assigned == null) return const SizedBox.shrink();
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryIndigoLight,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppTheme.clayBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.menu_book_rounded,
+                            color: AppTheme.primaryIndigo, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Mata Pelajaran: ${assigned.titleId}',
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
                         ),
-                      ),
-                      selected: isCurrent,
-                      selectedColor: AppTheme.primaryTeal,
-                      onSelected: (val) {
-                        if (val) {
-                          setState(() {
-                            _selectedCourseId = c.id;
-                            _future = _load();
-                          });
-                        }
-                      },
-                    );
-                  }).toList(),
-                ),
+                      ],
+                    ),
+                  );
+                }),
                 const SizedBox(height: 16),
               ],
 

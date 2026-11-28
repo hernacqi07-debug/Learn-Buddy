@@ -61,6 +61,7 @@ class UserProfile {
     this.className,
     this.schoolName,
     this.avatarUrl,
+    this.courseId,
   });
 
   final String id;
@@ -72,6 +73,7 @@ class UserProfile {
   final String? className;
   final String? schoolName;
   final String? avatarUrl;
+  final String? courseId;
 
   factory UserProfile.fromMap(Map<String, dynamic> map) {
     return UserProfile(
@@ -84,6 +86,7 @@ class UserProfile {
       className: map['class_name'] as String?,
       schoolName: map['school_name'] as String?,
       avatarUrl: map['avatar_url'] as String?,
+      courseId: map['course_id'] as String?,
     );
   }
 }
@@ -568,7 +571,8 @@ class Assignment {
       topicId: map['topic_id'] as String?,
       title: (map['title'] as String?) ?? '',
       description: (map['description'] as String?) ?? '',
-      type: (map['type'] as String?) ?? 'assignment',
+      type: (map['type'] as String?) ??
+          (map['category'] == 'pengumuman' ? 'announcement' : 'praktikum'),
       dueDate: map['due_date'] != null ? DateTime.tryParse(map['due_date'] as String) : null,
       createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String) : DateTime.now(),
       isActive: (map['is_active'] as bool?) ?? true,

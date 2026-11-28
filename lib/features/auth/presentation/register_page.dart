@@ -22,10 +22,38 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _inviteCtrl = TextEditingController();
 
   UserRole _role = UserRole.student;
+  List<Course> _courses = [];
+  String? _selectedCourseId;
+  bool _loadingCourses = true;
   bool _isLoading = false;
   bool _isSuccess = false;
   bool _obscure = true;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCourses();
+  }
+
+  Future<void> _loadCourses() async {
+    try {
+      final list = await ref
+          .read(authRepositoryProvider)
+          .fetchActiveCoursesForRegistration();
+      if (!mounted) return;
+      setState(() {
+        _courses = list;
+        if (list.isNotEmpty) {
+          _selectedCourseId = list.first.id;
+        }
+        _loadingCourses = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingCourses = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -46,12 +74,23 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
     try {
       final lang = ref.read(languageProvider).languageCode;
+      if (_role == UserRole.teacher && _selectedCourseId == null) {
+        setState(() {
+          _isLoading = false;
+          _error = lang == 'en'
+              ? 'Please select a subject for your teacher account.'
+              : 'Silakan pilih mata pelajaran untuk akun guru.';
+        });
+        return;
+      }
+
       final newProfile = await ref.read(authRepositoryProvider).signUp(
             email: _emailCtrl.text,
             password: _passwordCtrl.text,
             displayName: _nameCtrl.text,
             role: _role,
             inviteCode: _role == UserRole.teacher ? _inviteCtrl.text : null,
+            courseId: _role == UserRole.teacher ? _selectedCourseId : null,
             languagePref: lang,
           );
 
@@ -221,6 +260,43 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       ),
                     ),
                     if (_role == UserRole.teacher) ...[
+                      const SizedBox(height: 14),
+                      if (_loadingCourses)
+                        const LinearProgressIndicator()
+                      else
+                        DropdownButtonFormField<String>(
+                          initialValue: _selectedCourseId,
+                          decoration: InputDecoration(
+                            labelText: ref.watch(languageProvider).languageCode == 'en'
+                                ? 'Assigned Subject'
+                                : 'Mata Pelajaran yang Diampu',
+                            prefixIcon: const Icon(Icons.menu_book_outlined),
+                          ),
+                          items: _courses.map((c) {
+                            final isEn =
+                                ref.watch(languageProvider).languageCode == 'en';
+                            return DropdownMenuItem<String>(
+                              value: c.id,
+                              child: Text(
+                                isEn && c.titleEn.isNotEmpty
+                                    ? c.titleEn
+                                    : c.titleId,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (v) =>
+                              setState(() => _selectedCourseId = v),
+                          validator: (v) {
+                            if (_role == UserRole.teacher &&
+                                (v == null || v.isEmpty)) {
+                              return ref.watch(languageProvider).languageCode == 'en'
+                                  ? 'Please select a subject'
+                                  : 'Pilih mata pelajaran terlebih dahulu';
+                            }
+                            return null;
+                          },
+                        ),
                       const SizedBox(height: 14),
                       TextFormField(
                         controller: _inviteCtrl,

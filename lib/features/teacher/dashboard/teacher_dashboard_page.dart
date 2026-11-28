@@ -33,7 +33,10 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
 
     final courses = await repo.getCourses();
 
-    if (_selectedCourseId == null && courses.isNotEmpty) {
+    // Always scope teacher to their assigned course_id in profiles
+    if (myProfile?.courseId != null) {
+      _selectedCourseId = myProfile!.courseId;
+    } else if (_selectedCourseId == null && courses.isNotEmpty) {
       final myCourse = courses.firstWhere(
         (c) => c.teacherId == myProfile?.id,
         orElse: () => courses.first,
@@ -111,14 +114,15 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     ChoiceChip(
                       label: Text(l10n.typePracticum),
                       selected: selectedType == 'praktikum',
                       onSelected: (_) => setDialogState(() => selectedType = 'praktikum'),
                     ),
-                    const SizedBox(width: 8),
                     ChoiceChip(
                       label: Text(l10n.typeAnnouncement),
                       selected: selectedType == 'announcement',
@@ -321,6 +325,15 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
             }
 
             final (courses, students, topics) = snapshot.data!;
+            final assignedCourse = courses
+                .where((c) => c.id == _selectedCourseId)
+                .firstOrNull;
+            final isEn = ref.watch(languageProvider).languageCode == 'en';
+            final assignedCourseTitle = assignedCourse == null
+                ? '-'
+                : (isEn && assignedCourse.titleEn.isNotEmpty
+                    ? assignedCourse.titleEn
+                    : assignedCourse.titleId);
 
             // Calculate analytics KPIs
             final totalStudents = students.length;
@@ -340,6 +353,52 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                // Assigned Course Banner (Locked to teacher's subject)
+                ClayCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryIndigoLight,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.menu_book_rounded,
+                          size: 20,
+                          color: AppTheme.primaryIndigo,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isEn ? 'Your Assigned Subject' : 'Mata Pelajaran Anda',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                            Text(
+                              assignedCourseTitle,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
                 // 1. KPI Stats Grid (4 Tactile Clay Cards)
                 Row(
                   children: [

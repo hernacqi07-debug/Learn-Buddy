@@ -9,7 +9,7 @@ class TeacherRepository {
     try {
       final rows = await _client
           .from('courses')
-          .select('*, profiles(display_name), topics(id)')
+          .select('*, profiles!courses_teacher_id_fkey(display_name), topics(id)')
           .order('sort_order', ascending: true);
 
       return (rows as List).map((e) {
@@ -113,15 +113,24 @@ class TeacherRepository {
   }
 
   Future<List<TeacherStudentSessionDetail>> getStudentSessionsDetail(
-    String studentId,
-  ) async {
+    String studentId, {
+    String? courseId,
+  }) async {
     final sessionsRaw = await _client
         .from('sessions')
-        .select('*, topics(title_id, title_en)')
+        .select('*, topics(title_id, title_en, course_id)')
         .eq('student_id', studentId)
         .order('started_at', ascending: false);
 
-    final sessions = (sessionsRaw as List)
+    final filteredRaw = (sessionsRaw as List).where((e) {
+      if (courseId == null) return true;
+      final map = Map<String, dynamic>.from(e as Map);
+      final topicCourseId =
+          (map['topics'] as Map<String, dynamic>?)?['course_id'] as String?;
+      return topicCourseId == courseId;
+    }).toList();
+
+    final sessions = filteredRaw
         .map((e) => LearningSession.fromMap(Map<String, dynamic>.from(e as Map)))
         .toList();
     if (sessions.isEmpty) return [];
@@ -383,15 +392,16 @@ class TeacherRepository {
   }) async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) throw Exception('Guru belum login');
+    final category = type == 'announcement' ? 'pengumuman' : 'tugas';
     await _client.from('assignments').insert({
       'teacher_id': uid,
       'course_id': courseId,
       'topic_id': topicId,
       'title': title.trim(),
       'description': description.trim(),
-      'type': type,
+      'category': category,
       'due_date': dueDate?.toIso8601String(),
-      'is_active': true,
+      'is_pinned': false,
     });
   }
 

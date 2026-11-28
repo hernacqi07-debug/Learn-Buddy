@@ -31,9 +31,13 @@ class _TeacherStudentDetailPageState
 
   Future<(UserProfile?, List<TeacherStudentSessionDetail>)> _load() async {
     final repo = ref.read(teacherRepositoryProvider);
+    final teacherCourseId = ref.read(currentProfileProvider).value?.courseId;
     final res = await Future.wait([
       repo.getStudentProfile(widget.studentId),
-      repo.getStudentSessionsDetail(widget.studentId),
+      repo.getStudentSessionsDetail(
+        widget.studentId,
+        courseId: teacherCourseId,
+      ),
     ]);
     return (
       res[0] as UserProfile?,

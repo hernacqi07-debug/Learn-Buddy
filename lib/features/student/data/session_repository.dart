@@ -9,7 +9,7 @@ class SessionRepository {
     try {
       final rows = await _client
           .from('courses')
-          .select('*, profiles(display_name), topics(id)')
+          .select('*, profiles!courses_teacher_id_fkey(display_name), topics(id)')
           .eq('is_active', true)
           .order('sort_order', ascending: true);
 
@@ -136,7 +136,6 @@ class SessionRepository {
       final rows = await _client
           .from('assignments')
           .select('*, profiles(display_name), topics(title_id)')
-          .eq('is_active', true)
           .order('created_at', ascending: false);
       return (rows as List)
           .map((e) => Assignment.fromMap(Map<String, dynamic>.from(e as Map)))

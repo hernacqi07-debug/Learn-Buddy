@@ -21,7 +21,9 @@ class StudentChatHubPage extends ConsumerStatefulWidget {
 }
 
 class _StudentChatHubPageState extends ConsumerState<StudentChatHubPage> {
-  late Future<(List<TopicSummary>, List<LearningSession>)> _loadFuture;
+  late Future<(List<Course>, List<TopicSummary>, List<LearningSession>)> _loadFuture;
+  String? _selectedCourseId; // null = Semua Mata Pelajaran
+  final Set<String> _expandedCourseIds = {};
 
   @override
   void initState() {
@@ -29,15 +31,17 @@ class _StudentChatHubPageState extends ConsumerState<StudentChatHubPage> {
     _loadFuture = _fetchData();
   }
 
-  Future<(List<TopicSummary>, List<LearningSession>)> _fetchData() async {
+  Future<(List<Course>, List<TopicSummary>, List<LearningSession>)> _fetchData() async {
     final repo = ref.read(sessionRepositoryProvider);
     final results = await Future.wait([
+      repo.getCourses(),
       repo.getTopicsSummary(),
       repo.getMySessions(),
     ]);
     return (
-      results[0] as List<TopicSummary>,
-      results[1] as List<LearningSession>,
+      results[0] as List<Course>,
+      results[1] as List<TopicSummary>,
+      results[2] as List<LearningSession>,
     );
   }
 
@@ -269,7 +273,7 @@ class _StudentChatHubPageState extends ConsumerState<StudentChatHubPage> {
       body: RefreshIndicator(
         color: AppTheme.primaryIndigo,
         onRefresh: () async => _reload(),
-        child: FutureBuilder<(List<TopicSummary>, List<LearningSession>)>(
+        child: FutureBuilder<(List<Course>, List<TopicSummary>, List<LearningSession>)>(
           future: _loadFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -295,9 +299,12 @@ class _StudentChatHubPageState extends ConsumerState<StudentChatHubPage> {
               );
             }
 
-            final (topics, sessions) = snapshot.data!;
+            final (courses, topics, sessions) = snapshot.data!;
             final activeSession = sessions.where((s) => s.status == SessionStatus.active).firstOrNull;
             final primaryTopic = topics.isNotEmpty ? topics.first : null;
+            final visibleCourses = _selectedCourseId == null
+                ? courses
+                : courses.where((c) => c.id == _selectedCourseId).toList();
 
             return ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -391,49 +398,37 @@ class _StudentChatHubPageState extends ConsumerState<StudentChatHubPage> {
                 ),
                 const SizedBox(height: 24),
 
-                // 2. Topik Struktur Data Header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
+                // 2. Filter Mata Pelajaran + Daftar Topik per Mata Pelajaran
+                if (courses.isNotEmpty) ...[
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
                       children: [
-                        const Icon(Icons.menu_book_rounded, size: 20, color: AppTheme.primaryIndigo),
-                        const SizedBox(width: 8),
-                        Text(
-                          l10n.topicsSectionTitle,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.textPrimary,
-                          ),
+                        _buildCourseFilterChip(
+                          label: isEn ? 'All Subjects' : 'Semua Mapel',
+                          selected: _selectedCourseId == null,
+                          onTap: () => setState(() => _selectedCourseId = null),
                         ),
+                        ...courses.map((c) {
+                          final cTitle = isEn && c.titleEn.isNotEmpty ? c.titleEn : c.titleId;
+                          return Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: _buildCourseFilterChip(
+                              label: cTitle,
+                              selected: _selectedCourseId == c.id,
+                              onTap: () => setState(() {
+                                _selectedCourseId = c.id;
+                                _expandedCourseIds.add(c.id);
+                              }),
+                            ),
+                          );
+                        }),
                       ],
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        if (primaryTopic != null) {
-                          context.push('/student/materi/${primaryTopic.id}');
-                        }
-                      },
-                      child: Row(
-                        children: [
-                          Text(
-                            l10n.seeAll,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.primaryIndigo,
-                            ),
-                          ),
-                          const Icon(Icons.chevron_right_rounded, size: 18, color: AppTheme.primaryIndigo),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
-                // Topics Cards List
                 if (topics.isEmpty)
                   ClayCard(
                     padding: const EdgeInsets.all(20),
@@ -444,6 +439,85 @@ class _StudentChatHubPageState extends ConsumerState<StudentChatHubPage> {
                       ),
                     ),
                   )
+                else if (visibleCourses.isNotEmpty)
+                  ...visibleCourses.expand((course) {
+                    final courseTopics = topics
+                        .where((t) => t.courseId == course.id)
+                        .toList();
+                    if (courseTopics.isEmpty) return const <Widget>[];
+                    final courseTitle =
+                        isEn && course.titleEn.isNotEmpty ? course.titleEn : course.titleId;
+                    final isExpanded = _expandedCourseIds.contains(course.id);
+                    return <Widget>[
+                      ClayCard(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        onTap: () {
+                          setState(() {
+                            if (isExpanded) {
+                              _expandedCourseIds.remove(course.id);
+                            } else {
+                              _expandedCourseIds.add(course.id);
+                            }
+                          });
+                        },
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryIndigoLight,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.menu_book_rounded,
+                                size: 19,
+                                color: AppTheme.primaryIndigo,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                courseTitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ClayPill(
+                              label: isEn
+                                  ? '${courseTopics.length} Topics'
+                                  : '${courseTopics.length} Topik',
+                              color: AppTheme.primaryIndigoLight,
+                              textColor: AppTheme.primaryIndigo,
+                            ),
+                            const SizedBox(width: 6),
+                            AnimatedRotation(
+                              turns: isExpanded ? 0.5 : 0.0,
+                              duration: const Duration(milliseconds: 200),
+                              child: const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 24,
+                                color: AppTheme.primaryIndigo,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      if (isExpanded) ...[
+                        ...courseTopics.map((topic) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12.0),
+                              child: _buildTopicCard(topic, lang, isEn, l10n),
+                            )),
+                        const SizedBox(height: 6),
+                      ],
+                    ];
+                  })
                 else
                   ...topics.map((topic) => Padding(
                         padding: const EdgeInsets.only(bottom: 12.0),
@@ -505,6 +579,35 @@ class _StudentChatHubPageState extends ConsumerState<StudentChatHubPage> {
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCourseFilterChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primaryIndigo : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? AppTheme.primaryIndigo : AppTheme.clayBorder,
+            width: 1.5,
+          ),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w800,
+            color: selected ? Colors.white : AppTheme.textSecondary,
+          ),
         ),
       ),
     );

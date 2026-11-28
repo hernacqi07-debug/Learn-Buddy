@@ -145,6 +145,7 @@ class AdminRepository {
     required String password,
     required String displayName,
     required UserRole role,
+    String? courseId,
     String? schoolName,
     String? className,
   }) async {
@@ -156,6 +157,7 @@ class AdminRepository {
         'password': password,
         'display_name': displayName.trim(),
         'role': role.name,
+        'course_id': role == UserRole.teacher ? courseId : null,
         'school_name': schoolName?.trim().isEmpty == true ? null : schoolName?.trim(),
         'class_name': className?.trim().isEmpty == true ? null : className?.trim(),
       },
@@ -170,6 +172,7 @@ class AdminRepository {
   Future<void> updateUserRole({
     required String userId,
     required UserRole role,
+    String? courseId,
   }) async {
     final res = await _client.functions.invoke(
       'admin-users',
@@ -177,6 +180,7 @@ class AdminRepository {
         'action': 'update_role',
         'user_id': userId,
         'role': role.name,
+        'course_id': role == UserRole.teacher ? courseId : null,
       },
     );
     if (res.status >= 400) {
@@ -232,6 +236,30 @@ class AdminRepository {
 
   Future<void> toggleCourseActive(String courseId, bool isActive) async {
     await _client.from('courses').update({'is_active': isActive}).eq('id', courseId);
+  }
+
+  Future<void> createCourse({
+    required String code,
+    required String titleId,
+    required String titleEn,
+    String descriptionId = '',
+    String descriptionEn = '',
+  }) async {
+    final normalizedCode = code
+        .trim()
+        .toUpperCase()
+        .replaceAll(RegExp(r'[^A-Z0-9_-]'), '-');
+    await _client.from('courses').insert({
+      'code': normalizedCode,
+      'title_id': titleId.trim(),
+      'title_en': titleEn.trim().isEmpty ? titleId.trim() : titleEn.trim(),
+      'description_id': descriptionId.trim(),
+      'description_en': descriptionEn.trim().isEmpty
+          ? descriptionId.trim()
+          : descriptionEn.trim(),
+      'is_active': true,
+      'sort_order': 10,
+    });
   }
 
   Future<void> toggleTopicActive(String topicId, bool isActive) async {

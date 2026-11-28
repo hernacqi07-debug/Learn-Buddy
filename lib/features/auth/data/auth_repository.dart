@@ -26,12 +26,24 @@ class AuthRepository {
     return res.user;
   }
 
+  Future<List<Course>> fetchActiveCoursesForRegistration() async {
+    final rows = await _client
+        .from('courses')
+        .select('id, code, title_id, title_en, description_id, description_en, icon, accent_color, sort_order, is_active')
+        .eq('is_active', true)
+        .order('sort_order', ascending: true);
+    return (rows as List)
+        .map((e) => Course.fromMap(Map<String, dynamic>.from(e as Map)))
+        .toList();
+  }
+
   Future<UserProfile> signUp({
     required String email,
     required String password,
     required String displayName,
     required UserRole role,
     String? inviteCode,
+    String? courseId,
     String languagePref = 'id',
   }) async {
     final res = await _client.auth.signUp(
@@ -52,6 +64,7 @@ class AuthRepository {
           'p_role': role.name,
           'p_invite_code': inviteCode?.trim(),
           'p_language_pref': languagePref,
+          'p_course_id': role == UserRole.teacher ? courseId : null,
         },
       );
       return UserProfile.fromMap(Map<String, dynamic>.from(data as Map));

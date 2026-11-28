@@ -53,14 +53,21 @@ class LearnBuddyArViewFactory(
 
 private data class BlockPalette(val r: Float, val g: Float, val b: Float, val hexBg: Int)
 
-private data class StackBlock3D(
+private data class ArBlock3D(
     val id: Long,
-    val label: String,
-    val palette: BlockPalette,
+    var label: String,
+    var palette: BlockPalette,
+    var x: Float,
     var y: Float,
+    var z: Float,
+    var targetX: Float,
     var targetY: Float,
-    var alpha: Float,
-    var targetAlpha: Float,
+    var targetZ: Float,
+    var sx: Float = 0.064f,
+    var sy: Float = 0.024f,
+    var sz: Float = 0.050f,
+    var alpha: Float = 0.2f,
+    var targetAlpha: Float = 1.0f,
     var removing: Boolean = false,
     var textureId: Int = 0,
     var needsTexture: Boolean = true
@@ -105,20 +112,23 @@ class LearnBuddyArView(
     private lateinit var cubeFaceBuffers: List<FloatBuffer>
     private lateinit var faceTexBuffer: FloatBuffer
 
-    // ARCore tracking & 3D Stack state
+    // ARCore tracking & Multi-Topic 3D Scene state
     private val lock = Any()
     private val maxCapacity = 5
     private var colorCounter = 0
-    private val stackBlocks = mutableListOf<StackBlock3D>()
-    private var peekBlockId: Long? = null
+    private val blocks = mutableListOf<ArBlock3D>()
+    private var highlightBlockId: Long? = null
     private var shakeFrames = 0
     private var frameTick = 0
+    private var encapValue = "100"
+    private var loopIndex = 0
+    private var seededType: String? = null
 
     private var markerDetected = false
     private var activeObjectType: String? = null
     private var lastSentStatus = ""
     private var dbErrorMessage: String? = null
-    private var hasAutoSeeded = false
+
     private val anchorMatrix = FloatArray(16)
     private val projMatrix = FloatArray(16)
     private val viewMatrix = FloatArray(16)
@@ -126,12 +136,25 @@ class LearnBuddyArView(
     private val modelMatrix = FloatArray(16)
     private val mvpMatrix = FloatArray(16)
 
+    private val markerRegistry = listOf(
+        "stack" to "marker_stack.png",
+        "queue" to "marker_queue.png",
+        "linked_list" to "marker_linked_list.png",
+        "java_class" to "marker_java_oop.png",
+        "java_encap" to "marker_java_encap.png",
+        "java_inherit" to "marker_java_inherit.png",
+        "py_list_tuple" to "marker_py_list_tuple.png",
+        "py_dict" to "marker_py_dict.png",
+        "py_loop" to "marker_py_loop.png"
+    )
+
     private val palettes = listOf(
         BlockPalette(0.39f, 0.40f, 0.95f, Color.rgb(79, 70, 229)),   // Indigo
         BlockPalette(0.06f, 0.73f, 0.51f, Color.rgb(5, 150, 105)),   // Emerald
         BlockPalette(0.96f, 0.62f, 0.04f, Color.rgb(217, 119, 6)),   // Amber
         BlockPalette(0.93f, 0.28f, 0.60f, Color.rgb(219, 39, 119)),  // Pink
-        BlockPalette(0.05f, 0.65f, 0.91f, Color.rgb(2, 132, 199))    // Sky
+        BlockPalette(0.05f, 0.65f, 0.91f, Color.rgb(2, 132, 199)),   // Sky
+        BlockPalette(0.49f, 0.23f, 0.93f, Color.rgb(124, 58, 237))   // Violet
     )
 
     init {
@@ -169,19 +192,24 @@ class LearnBuddyArView(
                 config.planeFindingMode = Config.PlaneFindingMode.DISABLED
 
                 try {
-                    context.assets.open("marker_stack.png").use { stream ->
-                        val bitmap = BitmapFactory.decodeStream(stream)
-                            ?: throw IllegalStateException("Bitmap decode returned null")
-                        val db = AugmentedImageDatabase(session)
-                        db.addImage("stack_marker", bitmap, 0.12f)
-                        config.augmentedImageDatabase = db
-                        bitmap.recycle()
-                        dbErrorMessage = null
-                        Log.i("LearnBuddyArView", "Loaded marker_stack.png into AugmentedImageDatabase (${db.numImages} imgs)")
+                    val db = AugmentedImageDatabase(session)
+                    var loadedCount = 0
+                    for ((typeKey, assetFile) in markerRegistry) {
+                        context.assets.open(assetFile).use { stream ->
+                            val bitmap = BitmapFactory.decodeStream(stream)
+                            if (bitmap != null) {
+                                db.addImage(typeKey, bitmap, 0.12f)
+                                bitmap.recycle()
+                                loadedCount++
+                            }
+                        }
                     }
+                    config.augmentedImageDatabase = db
+                    dbErrorMessage = null
+                    Log.i("LearnBuddyArView", "Loaded $loadedCount AR markers into AugmentedImageDatabase")
                 } catch (e: Exception) {
                     dbErrorMessage = "DB Error: ${e.javaClass.simpleName}"
-                    Log.e("LearnBuddyArView", "Failed to load marker_stack.png", e)
+                    Log.e("LearnBuddyArView", "Failed to load AR markers", e)
                 }
 
                 session.configure(config)
@@ -200,7 +228,7 @@ class LearnBuddyArView(
         markerDetected = detected
         activeObjectType = objectType
         lastSentStatus = status
-        val activeLabels = synchronized(lock) { stackBlocks.filter { !it.removing }.map { it.label } }
+        val activeLabels = synchronized(lock) { blocks.filter { !it.removing }.map { it.label } }
         mainHandler.post {
             channel.invokeMethod(
                 "onMarkerStatus",
@@ -211,6 +239,108 @@ class LearnBuddyArView(
                     "items" to activeLabels
                 )
             )
+        }
+    }
+
+    private fun seedInitialSceneFor(type: String) {
+        clearAllBlocksLocked()
+        colorCounter = 0
+        highlightBlockId = null
+        encapValue = "100"
+        loopIndex = 0
+        seededType = type
+
+        when (type) {
+            "stack" -> {
+                addBlockLocked("Data 1", 0f, 0.10f, 0f, 0f, 0.020f, 0f)
+            }
+            "queue" -> {
+                addBlockLocked("Antre 1", 0.08f, 0.020f, 0f, -0.054f, 0.020f, 0f, sx = 0.032f, sz = 0.036f)
+                addBlockLocked("Antre 2", 0.09f, 0.020f, 0f, -0.018f, 0.020f, 0f, sx = 0.032f, sz = 0.036f)
+            }
+            "linked_list" -> {
+                addBlockLocked("Head:10", 0f, 0.06f, 0f, -0.044f, 0.022f, 0f, sx = 0.036f, sz = 0.034f)
+                addBlockLocked("Node:20", 0f, 0.06f, 0f, 0.004f, 0.022f, 0f, sx = 0.036f, sz = 0.034f)
+            }
+            "java_class" -> {
+                addBlockLocked("Obj 1", 0f, 0.08f, 0.022f, -0.036f, 0.020f, 0.022f, sx = 0.036f, sz = 0.032f)
+            }
+            "java_encap" -> {
+                addBlockLocked("private:100", 0f, 0.05f, 0f, 0f, 0.028f, 0f, sx = 0.060f, sy = 0.028f, sz = 0.046f)
+            }
+            "java_inherit" -> {
+                addBlockLocked("Kucing", 0f, 0.05f, 0.01f, -0.038f, 0.020f, 0.01f, sx = 0.040f, sz = 0.034f)
+                addBlockLocked("Burung", 0f, 0.05f, 0.01f, 0.038f, 0.020f, 0.01f, sx = 0.040f, sz = 0.034f)
+            }
+            "py_list_tuple" -> {
+                addBlockLocked("List[0]:A", -0.042f, 0.08f, 0f, -0.042f, 0.020f, 0f, sx = 0.046f, sz = 0.036f)
+            }
+            "py_dict" -> {
+                addBlockLocked("nama:Budi", 0f, 0.08f, 0f, -0.038f, 0.022f, 0f, sx = 0.054f, sz = 0.036f)
+            }
+            "py_loop" -> {
+                for (i in 0..4) {
+                    val x = -0.064f + i * 0.032f
+                    addBlockLocked("i=$i", x, 0.05f, 0f, x, 0.020f, 0f, sx = 0.026f, sy = 0.022f, sz = 0.028f)
+                }
+                highlightBlockId = blocks.firstOrNull()?.id
+            }
+        }
+    }
+
+    private fun clearAllBlocksLocked() {
+        for (b in blocks) {
+            b.removing = true
+            b.targetAlpha = 0f
+        }
+    }
+
+    private fun addBlockLocked(
+        label: String,
+        x: Float, y: Float, z: Float,
+        tx: Float, ty: Float, tz: Float,
+        sx: Float = 0.064f, sy: Float = 0.024f, sz: Float = 0.050f
+    ): ArBlock3D {
+        val pal = palettes[colorCounter % palettes.size]
+        colorCounter++
+        val block = ArBlock3D(
+            id = System.nanoTime() + colorCounter,
+            label = label,
+            palette = pal,
+            x = x, y = y, z = z,
+            targetX = tx, targetY = ty, targetZ = tz,
+            sx = sx, sy = sy, sz = sz
+        )
+        blocks.add(block)
+        return block
+    }
+
+    private fun relayoutActiveLocked(type: String) {
+        val active = blocks.filter { !it.removing }
+        when (type) {
+            "stack" -> active.forEachIndexed { idx, b ->
+                b.targetX = 0f; b.targetY = 0.020f + idx * 0.028f; b.targetZ = 0f
+            }
+            "queue" -> active.forEachIndexed { idx, b ->
+                b.targetX = -0.072f + idx * 0.036f; b.targetY = 0.020f; b.targetZ = 0f
+            }
+            "linked_list" -> active.forEachIndexed { idx, b ->
+                b.targetX = -0.066f + idx * 0.044f; b.targetY = 0.022f; b.targetZ = 0f
+            }
+            "java_class" -> active.forEachIndexed { idx, b ->
+                b.targetX = -0.054f + idx * 0.038f; b.targetY = 0.020f; b.targetZ = 0.022f
+            }
+            "java_inherit" -> active.forEachIndexed { idx, b ->
+                val spacing = 0.044f
+                val startX = -((active.size - 1) * spacing) / 2f
+                b.targetX = startX + idx * spacing; b.targetY = 0.020f; b.targetZ = 0.01f
+            }
+            "py_list_tuple" -> active.forEachIndexed { idx, b ->
+                b.targetX = -0.042f; b.targetY = 0.020f + idx * 0.026f; b.targetZ = 0f
+            }
+            "py_dict" -> active.forEachIndexed { idx, b ->
+                b.targetX = 0f; b.targetY = 0.020f + idx * 0.028f; b.targetZ = 0f
+            }
         }
     }
 
@@ -261,90 +391,336 @@ class LearnBuddyArView(
                 pauseSession()
                 result.success(true)
             }
-            "push" -> {
+            "action" -> {
+                val action = call.argument<String>("action") ?: ""
                 val label = call.argument<String>("label")?.trim().orEmpty()
-                if (label.isEmpty()) {
-                    result.success(buildStateMap("empty_input", null))
-                    return
-                }
-                synchronized(lock) {
-                    val active = stackBlocks.filter { !it.removing }
-                    if (active.size >= maxCapacity) {
-                        shakeFrames = 18
-                        result.success(buildStateMap("overflow", null))
-                    } else {
-                        val idx = active.size
-                        val targetY = 0.020f + idx * 0.028f
-                        val palette = palettes[colorCounter % palettes.size]
-                        colorCounter++
-                        stackBlocks.add(
-                            StackBlock3D(
-                                id = System.nanoTime(),
-                                label = label,
-                                palette = palette,
-                                y = targetY + 0.11f,
-                                targetY = targetY,
-                                alpha = 0.15f,
-                                targetAlpha = 1.0f
-                            )
-                        )
-                        peekBlockId = null
-                        result.success(buildStateMap("ok", label))
-                    }
-                }
-            }
-            "pop" -> {
-                synchronized(lock) {
-                    val active = stackBlocks.filter { !it.removing }
-                    if (active.isEmpty()) {
-                        shakeFrames = 18
-                        result.success(buildStateMap("underflow", null))
-                    } else {
-                        val top = active.last()
-                        top.removing = true
-                        top.targetY = top.y + 0.12f
-                        top.targetAlpha = 0f
-                        peekBlockId = null
-                        result.success(buildStateMap("ok", top.label))
-                    }
-                }
-            }
-            "peek" -> {
-                synchronized(lock) {
-                    val active = stackBlocks.filter { !it.removing }
-                    if (active.isEmpty()) {
-                        shakeFrames = 18
-                        result.success(buildStateMap("underflow", null))
-                    } else {
-                        val top = active.last()
-                        peekBlockId = top.id
-                        result.success(buildStateMap("peek", top.label))
-                    }
-                }
+                val type = activeObjectType ?: "stack"
+                result.success(handleTopicAction(type, action, label))
             }
             "reset" -> {
+                val type = activeObjectType ?: "stack"
                 synchronized(lock) {
-                    for (b in stackBlocks) {
-                        b.removing = true
-                        b.targetAlpha = 0f
-                    }
-                    peekBlockId = null
-                    colorCounter = 0
+                    seedInitialSceneFor(type)
                 }
-                result.success(buildStateMap("reset", null))
+                result.success(buildStateMap("reset", null, "Scene 3D direset."))
             }
             else -> result.notImplemented()
         }
     }
 
-    private fun buildStateMap(event: String, affectedItem: String?): Map<String, Any?> {
-        val activeLabels = stackBlocks.filter { !it.removing }.map { it.label }
+    private fun handleTopicAction(type: String, action: String, label: String): Map<String, Any?> {
+        synchronized(lock) {
+            val active = blocks.filter { !it.removing }
+
+            return when (type) {
+                "stack" -> when (action) {
+                    "push" -> {
+                        if (active.size >= maxCapacity) {
+                            shakeFrames = 18
+                            buildStateMap("overflow", null, "Stack Overflow! Kapasitas maksimal 5.")
+                        } else {
+                            val text = label.ifEmpty { "Data ${active.size + 1}" }
+                            val ty = 0.020f + active.size * 0.028f
+                            addBlockLocked(text, 0f, ty + 0.10f, 0f, 0f, ty, 0f)
+                            highlightBlockId = null
+                            buildStateMap("ok", text, "PUSH \"$text\" ditaruh di puncak TOP (LIFO).")
+                        }
+                    }
+                    "pop" -> {
+                        if (active.isEmpty()) {
+                            shakeFrames = 18
+                            buildStateMap("underflow", null, "Stack Underflow! Tumpukan kosong.")
+                        } else {
+                            val top = active.last()
+                            top.removing = true; top.targetY = top.y + 0.11f; top.targetAlpha = 0f
+                            highlightBlockId = null
+                            buildStateMap("ok", top.label, "POP \"${top.label}\" keluar dari TOP.")
+                        }
+                    }
+                    "peek" -> {
+                        if (active.isEmpty()) {
+                            shakeFrames = 18
+                            buildStateMap("underflow", null, "Stack kosong, tidak ada elemen TOP.")
+                        } else {
+                            highlightBlockId = active.last().id
+                            buildStateMap("peek", active.last().label, "PEEK: Elemen TOP adalah \"${active.last().label}\".")
+                        }
+                    }
+                    else -> buildStateMap("ok", null, "")
+                }
+
+                "queue" -> when (action) {
+                    "enqueue" -> {
+                        if (active.size >= maxCapacity) {
+                            shakeFrames = 18
+                            buildStateMap("overflow", null, "Queue Overflow! Antrean penuh (5/5).")
+                        } else {
+                            val text = label.ifEmpty { "Antre ${active.size + 1}" }
+                            addBlockLocked(text, 0.11f, 0.020f, 0f, 0f, 0.020f, 0f, sx = 0.032f, sz = 0.036f)
+                            relayoutActiveLocked("queue")
+                            highlightBlockId = null
+                            buildStateMap("ok", text, "ENQUEUE \"$text\" masuk di ujung REAR.")
+                        }
+                    }
+                    "dequeue" -> {
+                        if (active.isEmpty()) {
+                            shakeFrames = 18
+                            buildStateMap("underflow", null, "Queue Underflow! Antrean kosong.")
+                        } else {
+                            val front = active.first()
+                            front.removing = true; front.targetX = front.x - 0.08f; front.targetAlpha = 0f
+                            relayoutActiveLocked("queue")
+                            highlightBlockId = null
+                            buildStateMap("ok", front.label, "DEQUEUE \"${front.label}\" keluar dari FRONT (FIFO).")
+                        }
+                    }
+                    "peek" -> {
+                        if (active.isEmpty()) {
+                            shakeFrames = 18
+                            buildStateMap("underflow", null, "Antrean kosong.")
+                        } else {
+                            highlightBlockId = active.first().id
+                            buildStateMap("peek", active.first().label, "PEEK: Elemen terdepan (FRONT) adalah \"${active.first().label}\".")
+                        }
+                    }
+                    else -> buildStateMap("ok", null, "")
+                }
+
+                "linked_list" -> when (action) {
+                    "insert_head" -> {
+                        if (active.size >= 4) {
+                            shakeFrames = 18
+                            buildStateMap("overflow", null, "Maksimal 4 Node agar pointer tetap jelas.")
+                        } else {
+                            val text = label.ifEmpty { "N:${(active.size + 1) * 10}" }
+                            val nb = addBlockLocked(text, -0.09f, 0.08f, 0f, 0f, 0.022f, 0f, sx = 0.036f, sz = 0.034f)
+                            blocks.remove(nb)
+                            blocks.add(0, nb)
+                            relayoutActiveLocked("linked_list")
+                            highlightBlockId = nb.id
+                            buildStateMap("ok", text, "INSERT HEAD \"$text\" menjadi pointer HEAD baru.")
+                        }
+                    }
+                    "insert_tail" -> {
+                        if (active.size >= 4) {
+                            shakeFrames = 18
+                            buildStateMap("overflow", null, "Maksimal 4 Node.")
+                        } else {
+                            val text = label.ifEmpty { "N:${(active.size + 1) * 10}" }
+                            val nb = addBlockLocked(text, 0.09f, 0.08f, 0f, 0f, 0.022f, 0f, sx = 0.036f, sz = 0.034f)
+                            relayoutActiveLocked("linked_list")
+                            highlightBlockId = nb.id
+                            buildStateMap("ok", text, "INSERT TAIL \"$text\" disambung ke pointer next terakhir.")
+                        }
+                    }
+                    "delete_head" -> {
+                        if (active.isEmpty()) {
+                            shakeFrames = 18
+                            buildStateMap("underflow", null, "Linked List kosong.")
+                        } else {
+                            val head = active.first()
+                            head.removing = true; head.targetY = 0.10f; head.targetAlpha = 0f
+                            relayoutActiveLocked("linked_list")
+                            highlightBlockId = null
+                            buildStateMap("ok", head.label, "DELETE HEAD \"${head.label}\" — HEAD pindah ke node berikutnya.")
+                        }
+                    }
+                    else -> buildStateMap("ok", null, "")
+                }
+
+                "java_class" -> when (action) {
+                    "new_object" -> {
+                        if (active.size >= 4) {
+                            shakeFrames = 18
+                            buildStateMap("overflow", null, "Maksimal 4 instance objek dari Class.")
+                        } else {
+                            val text = label.ifEmpty { "Obj ${active.size + 1}" }
+                            val nb = addBlockLocked(text, 0f, 0.08f, -0.03f, 0f, 0.020f, 0.022f, sx = 0.036f, sz = 0.032f)
+                            relayoutActiveLocked("java_class")
+                            highlightBlockId = nb.id
+                            buildStateMap("ok", text, "new Mobil() menciptakan instance \"$text\" terpisah di memori.")
+                        }
+                    }
+                    "mutate_obj" -> {
+                        if (active.isEmpty()) {
+                            shakeFrames = 18
+                            buildStateMap("underflow", null, "Belum ada objek. Tekan NEW OBJECT dulu.")
+                        } else {
+                            val first = active.first()
+                            val newLbl = label.ifEmpty { "${first.label}*" }
+                            first.label = newLbl
+                            first.needsTexture = true
+                            highlightBlockId = first.id
+                            buildStateMap("ok", newLbl, "Mengubah atribut objek pertama tidak mengubah objek lain!")
+                        }
+                    }
+                    "inspect" -> {
+                        buildStateMap("peek", null, "1 Blueprint Class dapat mencetak banyak Objek independen.")
+                    }
+                    else -> buildStateMap("ok", null, "")
+                }
+
+                "java_encap" -> when (action) {
+                    "setter" -> {
+                        val newVal = label.ifEmpty { "250" }
+                        encapValue = newVal
+                        active.firstOrNull()?.let {
+                            it.label = "private:$newVal"
+                            it.needsTexture = true
+                            highlightBlockId = it.id
+                        }
+                        buildStateMap("ok", newVal, "setSaldo($newVal) lolos validasi dan memperbarui data private.")
+                    }
+                    "getter" -> {
+                        active.firstOrNull()?.let { highlightBlockId = it.id }
+                        buildStateMap("peek", encapValue, "getSaldo() mengembalikan nilai terenkapsulasi: $encapValue.")
+                    }
+                    "direct_hack" -> {
+                        shakeFrames = 22
+                        highlightBlockId = null
+                        buildStateMap("overflow", null, "DITOLAK! Atribut private tidak bisa diubah langsung dari luar class.")
+                    }
+                    else -> buildStateMap("ok", null, "")
+                }
+
+                "java_inherit" -> when (action) {
+                    "add_child" -> {
+                        if (active.size >= 4) {
+                            shakeFrames = 18
+                            buildStateMap("overflow", null, "Maksimal 4 Subclass pada visualisasi 3D.")
+                        } else {
+                            val text = label.ifEmpty { "Anak ${active.size + 1}" }
+                            val nb = addBlockLocked(text, 0f, 0.07f, 0.01f, 0f, 0.020f, 0.01f, sx = 0.040f, sz = 0.034f)
+                            relayoutActiveLocked("java_inherit")
+                            highlightBlockId = nb.id
+                            buildStateMap("ok", text, "class $text extends Hewan otomatis mewarisi method Superclass.")
+                        }
+                    }
+                    "override_method" -> {
+                        val last = active.lastOrNull()
+                        if (last == null) {
+                            shakeFrames = 18
+                            buildStateMap("underflow", null, "Tambahkan Subclass dulu.")
+                        } else {
+                            last.label = "@Override"
+                            last.needsTexture = true
+                            highlightBlockId = last.id
+                            buildStateMap("ok", last.label, "Subclass meng-override method suara() tanpa mengubah Superclass.")
+                        }
+                    }
+                    "inspect" -> {
+                        buildStateMap("peek", null, "Superclass Hewan berada di atas; semua Subclass mewarisi atributnya.")
+                    }
+                    else -> buildStateMap("ok", null, "")
+                }
+
+                "py_list_tuple" -> when (action) {
+                    "list_append" -> {
+                        if (active.size >= 4) {
+                            shakeFrames = 18
+                            buildStateMap("overflow", null, "List penuh (maks 4 elemen di AR).")
+                        } else {
+                            val text = label.ifEmpty { "Item ${active.size}" }
+                            val ty = 0.020f + active.size * 0.026f
+                            addBlockLocked("L[${active.size}]:$text", -0.042f, ty + 0.08f, 0f, -0.042f, ty, 0f, sx = 0.046f, sz = 0.036f)
+                            highlightBlockId = null
+                            buildStateMap("ok", text, "list.append(\"$text\") berhasil karena List bersifat MUTABLE.")
+                        }
+                    }
+                    "list_pop" -> {
+                        if (active.isEmpty()) {
+                            shakeFrames = 18
+                            buildStateMap("underflow", null, "List kosong.")
+                        } else {
+                            val top = active.last()
+                            top.removing = true; top.targetY = top.y + 0.09f; top.targetAlpha = 0f
+                            buildStateMap("ok", top.label, "list.pop() menghapus elemen terakhir dari List.")
+                        }
+                    }
+                    "try_edit_tuple" -> {
+                        shakeFrames = 22
+                        buildStateMap("overflow", null, "TypeError! Tuple (kanan) bersifat IMMUTABLE — tidak bisa diubah!")
+                    }
+                    else -> buildStateMap("ok", null, "")
+                }
+
+                "py_dict" -> when (action) {
+                    "set_pair" -> {
+                        val raw = label.ifEmpty { "k${active.size + 1}:val" }
+                        val existingKey = raw.substringBefore(":")
+                        val existing = active.firstOrNull { it.label.startsWith("$existingKey:") }
+                        if (existing != null) {
+                            existing.label = raw
+                            existing.needsTexture = true
+                            highlightBlockId = existing.id
+                            buildStateMap("ok", raw, "Key \"$existingKey\" sudah ada → nilai lama ditimpa menjadi \"$raw\".")
+                        } else if (active.size >= 4) {
+                            shakeFrames = 18
+                            buildStateMap("overflow", null, "Dictionary penuh (maks 4 pasang key:value).")
+                        } else {
+                            val ty = 0.020f + active.size * 0.028f
+                            val nb = addBlockLocked(raw, 0f, ty + 0.08f, 0f, 0f, ty, 0f, sx = 0.068f, sz = 0.038f)
+                            highlightBlockId = nb.id
+                            buildStateMap("ok", raw, "Menambahkan pasangan unik \"$raw\" ke Dictionary.")
+                        }
+                    }
+                    "lookup" -> {
+                        val target = active.lastOrNull()
+                        if (target == null) {
+                            shakeFrames = 18
+                            buildStateMap("underflow", null, "Dictionary kosong.")
+                        } else {
+                            highlightBlockId = target.id
+                            buildStateMap("peek", target.label, "Lookup O(1) langsung lewat key → \"${target.label}\".")
+                        }
+                    }
+                    "del_pair" -> {
+                        val target = active.lastOrNull()
+                        if (target == null) {
+                            shakeFrames = 18
+                            buildStateMap("underflow", null, "Dictionary kosong.")
+                        } else {
+                            target.removing = true; target.targetY = target.y + 0.09f; target.targetAlpha = 0f
+                            highlightBlockId = null
+                            buildStateMap("ok", target.label, "del dict[\"${target.label.substringBefore(":")}\"] menghapus pasangan.")
+                        }
+                    }
+                    else -> buildStateMap("ok", null, "")
+                }
+
+                "py_loop" -> when (action) {
+                    "next_iter" -> {
+                        if (active.isNotEmpty()) {
+                            loopIndex = (loopIndex + 1) % active.size
+                            val current = active[loopIndex]
+                            highlightBlockId = current.id
+                            buildStateMap("peek", current.label, "Iterasi for i in range(5) aktif pada ${current.label} (berhenti sebelum 5).")
+                        } else {
+                            buildStateMap("ok", null, "")
+                        }
+                    }
+                    "call_func" -> {
+                        val current = active.getOrNull(loopIndex)
+                        highlightBlockId = current?.id
+                        buildStateMap("ok", "return ${loopIndex * 2}", "def hitung(i=$loopIndex) → return ${loopIndex * 2} (nilai dikembalikan ke pemanggil).")
+                    }
+                    else -> buildStateMap("ok", null, "")
+                }
+
+                else -> buildStateMap("ok", null, "")
+            }
+        }
+    }
+
+    private fun buildStateMap(event: String, affectedItem: String?, message: String): Map<String, Any?> {
+        val activeLabels = blocks.filter { !it.removing }.map { it.label }
         return mapOf(
             "items" to activeLabels,
             "capacity" to maxCapacity,
             "event" to event,
             "affectedItem" to affectedItem,
-            "markerDetected" to markerDetected
+            "message" to message,
+            "objectType" to activeObjectType
         )
     }
 
@@ -367,61 +743,39 @@ class LearnBuddyArView(
 
         val coords = floatArrayOf(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f)
         val tex = floatArrayOf(0f, 1f, 1f, 1f, 0f, 0f, 1f, 0f)
-
         quadVertices = toFloatBuffer(coords)
         quadTexCoords = toFloatBuffer(tex)
         transformedTexCoords = toFloatBuffer(tex)
 
-        val vs = loadShader(
-            GLES20.GL_VERTEX_SHADER,
-            """
+        val vs = loadShader(GLES20.GL_VERTEX_SHADER, """
             attribute vec4 a_Position;
             attribute vec2 a_TexCoord;
             varying vec2 v_TexCoord;
-            void main() {
-                gl_Position = a_Position;
-                v_TexCoord = a_TexCoord;
-            }
-            """.trimIndent()
-        )
-        val fs = loadShader(
-            GLES20.GL_FRAGMENT_SHADER,
-            """
+            void main() { gl_Position = a_Position; v_TexCoord = a_TexCoord; }
+        """.trimIndent())
+        val fs = loadShader(GLES20.GL_FRAGMENT_SHADER, """
             #extension GL_OES_EGL_image_external : require
             precision mediump float;
             varying vec2 v_TexCoord;
             uniform samplerExternalOES s_Texture;
-            void main() {
-                gl_FragColor = texture2D(s_Texture, v_TexCoord);
-            }
-            """.trimIndent()
-        )
+            void main() { gl_FragColor = texture2D(s_Texture, v_TexCoord); }
+        """.trimIndent())
         quadProgram = GLES20.glCreateProgram().also {
-            GLES20.glAttachShader(it, vs)
-            GLES20.glAttachShader(it, fs)
-            GLES20.glLinkProgram(it)
+            GLES20.glAttachShader(it, vs); GLES20.glAttachShader(it, fs); GLES20.glLinkProgram(it)
         }
         quadPositionAttr = GLES20.glGetAttribLocation(quadProgram, "a_Position")
         quadTexCoordAttr = GLES20.glGetAttribLocation(quadProgram, "a_TexCoord")
     }
 
     private fun setup3DBoxRenderer() {
-        val vs = loadShader(
-            GLES20.GL_VERTEX_SHADER,
-            """
+        val vs = loadShader(GLES20.GL_VERTEX_SHADER, """
             uniform mat4 u_MvpMatrix;
             attribute vec4 a_Position;
             attribute vec2 a_TexCoord;
             varying vec2 v_TexCoord;
-            void main() {
-                gl_Position = u_MvpMatrix * a_Position;
-                v_TexCoord = a_TexCoord;
-            }
-            """.trimIndent()
-        )
-        val fs = loadShader(
-            GLES20.GL_FRAGMENT_SHADER,
-            """
+            void main() { gl_Position = u_MvpMatrix * a_Position; v_TexCoord = a_TexCoord; }
+        """.trimIndent())
+        val fs = loadShader(GLES20.GL_FRAGMENT_SHADER, """
             precision mediump float;
             uniform vec4 u_Color;
             uniform float u_UseTexture;
@@ -435,12 +789,9 @@ class LearnBuddyArView(
                     gl_FragColor = u_Color;
                 }
             }
-            """.trimIndent()
-        )
+        """.trimIndent())
         boxProgram = GLES20.glCreateProgram().also {
-            GLES20.glAttachShader(it, vs)
-            GLES20.glAttachShader(it, fs)
-            GLES20.glLinkProgram(it)
+            GLES20.glAttachShader(it, vs); GLES20.glAttachShader(it, fs); GLES20.glLinkProgram(it)
         }
         boxPosAttr = GLES20.glGetAttribLocation(boxProgram, "a_Position")
         boxTexAttr = GLES20.glGetAttribLocation(boxProgram, "a_TexCoord")
@@ -449,19 +800,12 @@ class LearnBuddyArView(
         boxUseTexUniform = GLES20.glGetUniformLocation(boxProgram, "u_UseTexture")
         boxTexUniform = GLES20.glGetUniformLocation(boxProgram, "u_Texture")
 
-        // 6 faces of unit cube (-0.5..0.5), each as a 4-vertex triangle fan
         cubeFaceBuffers = listOf(
-            // 0: Front (+Z) — top-left, bottom-left, bottom-right, top-right
             toFloatBuffer(floatArrayOf(-0.5f, 0.5f, 0.5f, -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f, 0.5f, 0.5f)),
-            // 1: Back (-Z)
             toFloatBuffer(floatArrayOf(0.5f, 0.5f, -0.5f, 0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, 0.5f, -0.5f)),
-            // 2: Top (+Y)
             toFloatBuffer(floatArrayOf(-0.5f, 0.5f, -0.5f, -0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, -0.5f)),
-            // 3: Bottom (-Y)
             toFloatBuffer(floatArrayOf(-0.5f, -0.5f, 0.5f, -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f)),
-            // 4: Right (+X)
             toFloatBuffer(floatArrayOf(0.5f, 0.5f, 0.5f, 0.5f, -0.5f, 0.5f, 0.5f, -0.5f, -0.5f, 0.5f, 0.5f, -0.5f)),
-            // 5: Left (-X)
             toFloatBuffer(floatArrayOf(-0.5f, 0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f))
         )
         faceTexBuffer = toFloatBuffer(floatArrayOf(0f, 0f, 0f, 1f, 1f, 1f, 1f, 0f))
@@ -493,50 +837,41 @@ class LearnBuddyArView(
             val frame = session.update()
             frameTick++
 
-            // 1. Draw Camera Background
             drawCameraBackground(frame)
 
-            // 2. Track Marker (AugmentedImage) & resolve 3D object type
             val camState = frame.camera.trackingState
             val images = session.getAllTrackables(AugmentedImage::class.java)
             var foundTracking = false
             var detectedType: String? = null
             var methodLabel = ""
+
+            // Prefer FULL_TRACKING image when multiple markers have been seen
             for (img in images) {
-                if (img.trackingState == TrackingState.TRACKING) {
-                    val mappedType = when (img.name) {
-                        "stack_marker" -> "stack"
-                        // Future markers (e.g. "queue_marker" -> "queue") map here
-                        else -> null
-                    }
-                    if (mappedType != null) {
+                if (img.trackingState == TrackingState.TRACKING &&
+                    img.trackingMethod == AugmentedImage.TrackingMethod.FULL_TRACKING
+                ) {
+                    img.centerPose.toMatrix(anchorMatrix, 0)
+                    foundTracking = true
+                    detectedType = img.name
+                    methodLabel = img.trackingMethod.name
+                    break
+                }
+            }
+            if (!foundTracking) {
+                for (img in images) {
+                    if (img.trackingState == TrackingState.TRACKING) {
                         img.centerPose.toMatrix(anchorMatrix, 0)
                         foundTracking = true
-                        detectedType = mappedType
+                        detectedType = img.name
                         methodLabel = img.trackingMethod.name
                         break
                     }
                 }
             }
 
-            if (foundTracking && detectedType == "stack" && !hasAutoSeeded) {
+            if (foundTracking && detectedType != null && seededType != detectedType) {
                 synchronized(lock) {
-                    if (stackBlocks.none { !it.removing }) {
-                        val palette = palettes[colorCounter % palettes.size]
-                        colorCounter++
-                        stackBlocks.add(
-                            StackBlock3D(
-                                id = System.nanoTime(),
-                                label = "Data 1",
-                                palette = palette,
-                                y = 0.020f + 0.10f,
-                                targetY = 0.020f,
-                                alpha = 0.2f,
-                                targetAlpha = 1.0f
-                            )
-                        )
-                    }
-                    hasAutoSeeded = true
+                    seedInitialSceneFor(detectedType)
                 }
             }
 
@@ -544,22 +879,17 @@ class LearnBuddyArView(
                 dbErrorMessage != null -> dbErrorMessage!!
                 foundTracking -> "3D Aktif ($methodLabel)"
                 camState != TrackingState.TRACKING -> "Kamera: ${frame.camera.trackingFailureReason.name}"
-                else -> "Mencari Marker..."
+                else -> "Arahkan kamera ke Marker AR..."
             }
             emitMarkerStatus(foundTracking, detectedType, statusText)
 
-            // 3. Draw 3D Stack if marker is detected
-            if (foundTracking) {
+            if (foundTracking && detectedType != null) {
                 frame.camera.getProjectionMatrix(projMatrix, 0, 0.05f, 20.0f)
                 frame.camera.getViewMatrix(viewMatrix, 0)
                 Matrix.multiplyMM(vpMatrix, 0, projMatrix, 0, viewMatrix, 0)
-
-                drawStack3D()
+                drawScene3D(detectedType)
             } else {
-                // Still advance/clean up animations while marker is off-screen
-                synchronized(lock) {
-                    stepAnimationsAndCleanupGl()
-                }
+                synchronized(lock) { stepAnimationsAndCleanupGl() }
             }
         } catch (e: Exception) {
             Log.e("LearnBuddyArView", "onDrawFrame error", e)
@@ -600,10 +930,12 @@ class LearnBuddyArView(
     }
 
     private fun stepAnimationsAndCleanupGl() {
-        val iter = stackBlocks.iterator()
+        val iter = blocks.iterator()
         while (iter.hasNext()) {
             val b = iter.next()
+            b.x += (b.targetX - b.x) * 0.18f
             b.y += (b.targetY - b.y) * 0.18f
+            b.z += (b.targetZ - b.z) * 0.18f
             b.alpha += (b.targetAlpha - b.alpha) * 0.20f
             if (b.removing && b.alpha <= 0.04f) {
                 if (b.textureId != 0) {
@@ -615,7 +947,7 @@ class LearnBuddyArView(
         }
     }
 
-    private fun drawStack3D() {
+    private fun drawScene3D(type: String) {
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         GLES20.glDepthMask(true)
         GLES20.glEnable(GLES20.GL_BLEND)
@@ -623,8 +955,8 @@ class LearnBuddyArView(
         GLES20.glUseProgram(boxProgram)
 
         val shakeX: Float
-        val snapshot: List<StackBlock3D>
-        val currentPeekId: Long?
+        val snapshot: List<ArBlock3D>
+        val currentHighlight: Long?
 
         synchronized(lock) {
             if (shakeFrames > 0) {
@@ -634,52 +966,81 @@ class LearnBuddyArView(
                 shakeX = 0f
             }
             stepAnimationsAndCleanupGl()
-            for (b in stackBlocks) {
+            for (b in blocks) {
                 if (b.needsTexture) {
+                    if (b.textureId != 0) {
+                        GLES20.glDeleteTextures(1, intArrayOf(b.textureId), 0)
+                    }
                     b.textureId = createLabelTexture(b.label, b.palette.hexBg)
                     b.needsTexture = false
                 }
             }
-            snapshot = stackBlocks.toList()
-            currentPeekId = peekBlockId
+            snapshot = blocks.toList()
+            currentHighlight = highlightBlockId
         }
 
-        // Draw bright indigo-tinted base tray on the marker
-        drawBox(
-            x = shakeX,
-            y = 0.004f,
-            z = 0f,
-            sx = 0.082f,
-            sy = 0.008f,
-            sz = 0.068f,
-            r = 0.28f,
-            g = 0.36f,
-            b = 0.68f,
-            alpha = 0.96f,
-            frontTexId = 0
-        )
+        // Base platform tailored to scene layout
+        val baseW = if (type in listOf("queue", "linked_list", "java_class", "java_inherit", "py_list_tuple", "py_loop")) 0.16f else 0.09f
+        drawBox(shakeX, 0.004f, 0f, baseW, 0.007f, 0.078f, 0.24f, 0.32f, 0.62f, 0.94f, 0)
 
-        // Draw each Stack block
+        // Topic-specific static 3D structural elements
+        when (type) {
+            "linked_list" -> {
+                val active = snapshot.filter { !it.removing }
+                for (i in 0 until active.size - 1) {
+                    val midX = (active[i].x + active[i + 1].x) / 2f
+                    drawBox(midX + shakeX, 0.022f, 0f, 0.016f, 0.005f, 0.005f, 0.98f, 0.80f, 0.08f, 1.0f, 0)
+                }
+            }
+            "java_class" -> {
+                // Blueprint Class slab behind spawned objects
+                drawBox(shakeX, 0.036f, -0.026f, 0.12f, 0.014f, 0.024f, 0.12f, 0.18f, 0.42f, 0.95f, 0)
+            }
+            "java_inherit" -> {
+                // Superclass cube floating above children + vertical trunk
+                drawBox(shakeX, 0.068f, 0f, 0.072f, 0.024f, 0.044f, 0.92f, 0.45f, 0.08f, 0.98f, 0)
+                drawBox(shakeX, 0.044f, 0f, 0.006f, 0.024f, 0.006f, 0.95f, 0.95f, 0.95f, 0.90f, 0)
+            }
+            "py_list_tuple" -> {
+                // Right-side immutable Tuple crystal blocks (locked gold/amber)
+                drawBox(0.042f + shakeX, 0.020f, 0f, 0.046f, 0.022f, 0.036f, 0.85f, 0.55f, 0.05f, 0.92f, 0)
+                drawBox(0.042f + shakeX, 0.046f, 0f, 0.046f, 0.022f, 0.036f, 0.78f, 0.48f, 0.04f, 0.92f, 0)
+            }
+            "py_loop" -> {
+                // Reusable Function block floating above loop pipeline
+                drawBox(shakeX, 0.058f, -0.012f, 0.076f, 0.018f, 0.030f, 0.86f, 0.15f, 0.47f, 0.95f, 0)
+            }
+        }
+
+        // Draw all dynamic 3D data blocks
         for (block in snapshot) {
-            val isPeek = block.id == currentPeekId && !block.removing
-            val pulse = if (isPeek) 1.06f + 0.02f * sin(frameTick * 0.2f) else 1.0f
-            val r = if (isPeek) 0.98f else block.palette.r
-            val g = if (isPeek) 0.80f else block.palette.g
-            val b = if (isPeek) 0.08f else block.palette.b
+            val isHi = block.id == currentHighlight && !block.removing
+            val pulse = if (isHi) 1.07f + 0.025f * sin(frameTick * 0.22f) else 1.0f
+            val r = if (isHi) 0.98f else block.palette.r
+            val g = if (isHi) 0.80f else block.palette.g
+            val b = if (isHi) 0.08f else block.palette.b
 
             drawBox(
-                x = shakeX,
+                x = block.x + shakeX,
                 y = block.y,
-                z = 0f,
-                sx = 0.066f * pulse,
-                sy = 0.024f * pulse,
-                sz = 0.052f * pulse,
-                r = r,
-                g = g,
-                b = b,
+                z = block.z,
+                sx = block.sx * pulse,
+                sy = block.sy * pulse,
+                sz = block.sz * pulse,
+                r = r, g = g, b = b,
                 alpha = block.alpha,
                 frontTexId = block.textureId
             )
+        }
+
+        // Translucent Encapsulation protective shield drawn last
+        if (type == "java_encap") {
+            GLES20.glDepthMask(false)
+            val shieldR = if (shakeFrames > 0) 0.95f else 0.10f
+            val shieldG = if (shakeFrames > 0) 0.20f else 0.78f
+            val shieldB = if (shakeFrames > 0) 0.20f else 0.92f
+            drawBox(shakeX, 0.030f, 0f, 0.088f, 0.048f, 0.068f, shieldR, shieldG, shieldB, 0.30f, 0)
+            GLES20.glDepthMask(true)
         }
 
         GLES20.glDisable(GLES20.GL_BLEND)
@@ -703,7 +1064,6 @@ class LearnBuddyArView(
         GLES20.glVertexAttribPointer(boxTexAttr, 2, GLES20.GL_FLOAT, false, 0, faceTexBuffer)
 
         val shades = floatArrayOf(0.92f, 0.65f, 1.0f, 0.55f, 0.82f, 0.72f)
-
         for (faceIdx in 0..5) {
             val buf = cubeFaceBuffers[faceIdx]
             buf.position(0)
@@ -733,7 +1093,7 @@ class LearnBuddyArView(
         canvas.drawColor(bgColor)
 
         val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(90, 255, 255, 255)
+            color = Color.argb(95, 255, 255, 255)
             style = Paint.Style.STROKE
             strokeWidth = 6f
         }
@@ -741,7 +1101,7 @@ class LearnBuddyArView(
 
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
-            textSize = if (label.length > 8) 32f else 42f
+            textSize = if (label.length > 9) 28f else if (label.length > 6) 34f else 42f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             textAlign = Paint.Align.CENTER
         }
@@ -766,10 +1126,7 @@ class LearnBuddyArView(
         return ByteBuffer.allocateDirect(arr.size * 4)
             .order(ByteOrder.nativeOrder())
             .asFloatBuffer()
-            .apply {
-                put(arr)
-                position(0)
-            }
+            .apply { put(arr); position(0) }
     }
 
     private fun loadShader(type: Int, shaderCode: String): Int {

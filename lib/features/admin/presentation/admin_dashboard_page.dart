@@ -93,6 +93,7 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
     final schoolCtrl = TextEditingController();
     final classCtrl = TextEditingController();
     UserRole selectedRole = UserRole.student;
+    String? selectedCourseId = _courses.isNotEmpty ? _courses.first.id : null;
     bool submitting = false;
 
     await showDialog(
@@ -161,6 +162,28 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                       ),
                     ],
                   ),
+                  if (selectedRole == UserRole.teacher && _courses.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedCourseId,
+                      decoration: InputDecoration(
+                        labelText: isEn ? 'Assigned Subject' : 'Mata Pelajaran',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      items: _courses.map((c) {
+                        return DropdownMenuItem<String>(
+                          value: c.id,
+                          child: Text(
+                            isEn && c.titleEn.isNotEmpty ? c.titleEn : c.titleId,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (v) => setDialogState(() => selectedCourseId = v),
+                    ),
+                  ],
                   const SizedBox(height: 10),
                   ClayTextField(
                     controller: schoolCtrl,
@@ -208,6 +231,9 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                             password: passCtrl.text,
                             displayName: nameCtrl.text,
                             role: selectedRole,
+                            courseId: selectedRole == UserRole.teacher
+                                ? selectedCourseId
+                                : null,
                             schoolName: schoolCtrl.text,
                             className: classCtrl.text,
                           );
@@ -239,6 +265,8 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
 
   Future<void> _openChangeRoleDialog(UserProfile user, bool isEn) async {
     UserRole picked = user.role;
+    String? pickedCourseId =
+        user.courseId ?? (_courses.isNotEmpty ? _courses.first.id : null);
     bool saving = false;
 
     await showDialog(
@@ -284,6 +312,28 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                   ),
                 ],
               ),
+              if (picked == UserRole.teacher && _courses.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: pickedCourseId,
+                  decoration: InputDecoration(
+                    labelText: isEn ? 'Assigned Subject' : 'Mata Pelajaran',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  items: _courses.map((c) {
+                    return DropdownMenuItem<String>(
+                      value: c.id,
+                      child: Text(
+                        isEn && c.titleEn.isNotEmpty ? c.titleEn : c.titleId,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (v) => setDialogState(() => pickedCourseId = v),
+                ),
+              ],
             ],
           ),
           actions: [
@@ -300,15 +350,125 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
               onPressed: saving
                   ? null
                   : () async {
-                      if (picked == user.role) {
+                      if (picked == user.role && pickedCourseId == user.courseId) {
                         Navigator.of(ctx).pop();
                         return;
                       }
                       setDialogState(() => saving = true);
                       try {
-                        await _repo.updateUserRole(userId: user.id, role: picked);
+                        await _repo.updateUserRole(
+                          userId: user.id,
+                          role: picked,
+                          courseId: picked == UserRole.teacher ? pickedCourseId : null,
+                        );
                         if (ctx.mounted) Navigator.of(ctx).pop();
                         _showSnack(isEn ? 'Role updated!' : 'Peran berhasil diperbarui!');
+                        await _loadAll();
+                      } catch (e) {
+                        setDialogState(() => saving = false);
+                        _showSnack(
+                          e.toString().replaceFirst('Exception: ', ''),
+                          isError: true,
+                        );
+                      }
+                    },
+              child: saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : Text(isEn ? 'Save' : 'Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openCreateCourseDialog(bool isEn) async {
+    final codeCtrl = TextEditingController();
+    final titleIdCtrl = TextEditingController();
+    final titleEnCtrl = TextEditingController();
+    final descIdCtrl = TextEditingController();
+    bool saving = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(
+            isEn ? 'Add New Subject' : 'Tambah Mata Pelajaran',
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, fontSize: 18),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClayTextField(
+                  controller: codeCtrl,
+                  hintText: isEn ? 'Code (e.g. BASIS-DATA)' : 'Kode (mis. BASIS-DATA)',
+                  prefixIcon: Icons.tag_rounded,
+                ),
+                const SizedBox(height: 10),
+                ClayTextField(
+                  controller: titleIdCtrl,
+                  hintText: isEn ? 'Title (ID)' : 'Nama Mata Pelajaran (ID)',
+                  prefixIcon: Icons.menu_book_outlined,
+                ),
+                const SizedBox(height: 10),
+                ClayTextField(
+                  controller: titleEnCtrl,
+                  hintText: isEn ? 'Title (EN, optional)' : 'Nama (EN, opsional)',
+                  prefixIcon: Icons.translate_rounded,
+                ),
+                const SizedBox(height: 10),
+                ClayTextField(
+                  controller: descIdCtrl,
+                  hintText: isEn ? 'Short description' : 'Deskripsi singkat (opsional)',
+                  prefixIcon: Icons.notes_rounded,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.of(ctx).pop(),
+              child: Text(isEn ? 'Cancel' : 'Batal'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryIndigo,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (codeCtrl.text.trim().isEmpty ||
+                          titleIdCtrl.text.trim().isEmpty) {
+                        _showSnack(
+                          isEn
+                              ? 'Code and Subject Name are required.'
+                              : 'Kode dan Nama Mata Pelajaran wajib diisi.',
+                          isError: true,
+                        );
+                        return;
+                      }
+                      setDialogState(() => saving = true);
+                      try {
+                        await _repo.createCourse(
+                          code: codeCtrl.text,
+                          titleId: titleIdCtrl.text,
+                          titleEn: titleEnCtrl.text,
+                          descriptionId: descIdCtrl.text,
+                        );
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                        _showSnack(isEn
+                            ? 'Subject added!'
+                            : 'Mata pelajaran berhasil ditambahkan!');
                         await _loadAll();
                       } catch (e) {
                         setDialogState(() => saving = false);
@@ -425,7 +585,18 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                 style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
               ),
             )
-          : null,
+          : _tabIndex == 2
+              ? FloatingActionButton.extended(
+                  backgroundColor: AppTheme.primaryIndigo,
+                  foregroundColor: Colors.white,
+                  onPressed: () => _openCreateCourseDialog(isEn),
+                  icon: const Icon(Icons.add_rounded),
+                  label: Text(
+                    isEn ? 'Add Subject' : 'Tambah Mapel',
+                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                  ),
+                )
+              : null,
       body: SafeArea(
         child: Column(
           children: [

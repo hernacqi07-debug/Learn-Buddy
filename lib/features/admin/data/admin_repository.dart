@@ -140,6 +140,27 @@ class AdminRepository {
         .toList();
   }
 
+  Future<void> _invokeAdminUsers(
+    Map<String, dynamic> body, {
+    required String fallbackError,
+  }) async {
+    try {
+      final res = await _client.functions.invoke('admin-users', body: body);
+      if (res.status >= 400) {
+        final data = res.data;
+        final errMsg =
+            data is Map ? data['error']?.toString() : data?.toString();
+        throw Exception(errMsg ?? fallbackError);
+      }
+    } on FunctionException catch (e) {
+      final details = e.details;
+      final errMsg = details is Map
+          ? details['error']?.toString()
+          : details?.toString();
+      throw Exception(errMsg ?? e.reasonPhrase ?? fallbackError);
+    }
+  }
+
   Future<void> createUser({
     required String email,
     required String password,
@@ -149,24 +170,21 @@ class AdminRepository {
     String? schoolName,
     String? className,
   }) async {
-    final res = await _client.functions.invoke(
-      'admin-users',
-      body: {
+    await _invokeAdminUsers(
+      {
         'action': 'create_user',
         'email': email.trim(),
         'password': password,
         'display_name': displayName.trim(),
         'role': role.name,
         'course_id': role == UserRole.teacher ? courseId : null,
-        'school_name': schoolName?.trim().isEmpty == true ? null : schoolName?.trim(),
-        'class_name': className?.trim().isEmpty == true ? null : className?.trim(),
+        'school_name':
+            schoolName?.trim().isEmpty == true ? null : schoolName?.trim(),
+        'class_name':
+            className?.trim().isEmpty == true ? null : className?.trim(),
       },
+      fallbackError: 'Gagal membuat akun.',
     );
-    if (res.status >= 400) {
-      final data = res.data;
-      final errMsg = data is Map ? data['error']?.toString() : data?.toString();
-      throw Exception(errMsg ?? 'Gagal membuat akun.');
-    }
   }
 
   Future<void> updateUserRole({
@@ -174,35 +192,25 @@ class AdminRepository {
     required UserRole role,
     String? courseId,
   }) async {
-    final res = await _client.functions.invoke(
-      'admin-users',
-      body: {
+    await _invokeAdminUsers(
+      {
         'action': 'update_role',
         'user_id': userId,
         'role': role.name,
         'course_id': role == UserRole.teacher ? courseId : null,
       },
+      fallbackError: 'Gagal mengubah role.',
     );
-    if (res.status >= 400) {
-      final data = res.data;
-      final errMsg = data is Map ? data['error']?.toString() : data?.toString();
-      throw Exception(errMsg ?? 'Gagal mengubah role.');
-    }
   }
 
   Future<void> deleteUser(String userId) async {
-    final res = await _client.functions.invoke(
-      'admin-users',
-      body: {
+    await _invokeAdminUsers(
+      {
         'action': 'delete_user',
         'user_id': userId,
       },
+      fallbackError: 'Gagal menghapus akun.',
     );
-    if (res.status >= 400) {
-      final data = res.data;
-      final errMsg = data is Map ? data['error']?.toString() : data?.toString();
-      throw Exception(errMsg ?? 'Gagal menghapus akun.');
-    }
   }
 
   Future<(List<AdminCourseItem>, List<AdminTopicItem>)> fetchCoursesAndTopics() async {

@@ -403,7 +403,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              final homeRoute = switch (profile?.role) {
+                UserRole.admin => '/admin',
+                UserRole.teacher => '/teacher',
+                _ => '/student',
+              };
+              context.go(homeRoute);
+            }
+          },
         ),
       ),
       body: ListView(
@@ -482,11 +493,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ),
                 const SizedBox(height: 10),
                 ClayPill(
-                  label: isStudent
-                      ? (isEn ? 'Vocational High School Student (XI)' : 'Siswa SMK Kelas XI')
-                      : (isEn ? 'Instructor / Teacher' : 'Guru Pengajar'),
-                  color: isStudent ? AppTheme.primaryIndigoLight : const Color(0xFFFEF3C7),
-                  textColor: isStudent ? AppTheme.primaryIndigo : const Color(0xFFB45309),
+                  label: switch (profile?.role) {
+                    UserRole.admin => 'Administrator',
+                    UserRole.teacher =>
+                      isEn ? 'Instructor / Teacher' : 'Guru Pengajar',
+                    _ => (profile?.className != null &&
+                            profile!.className!.trim().isNotEmpty)
+                        ? '${isEn ? 'Student' : 'Siswa'} • ${profile.className!.trim()}'
+                        : (isEn ? 'Student' : 'Siswa'),
+                  },
+                  color: switch (profile?.role) {
+                    UserRole.admin => AppTheme.dangerRedLight,
+                    UserRole.teacher => const Color(0xFFFEF3C7),
+                    _ => AppTheme.primaryIndigoLight,
+                  },
+                  textColor: switch (profile?.role) {
+                    UserRole.admin => AppTheme.dangerRed,
+                    UserRole.teacher => const Color(0xFFB45309),
+                    _ => AppTheme.primaryIndigo,
+                  },
                 ),
               ],
             ),
@@ -631,15 +656,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   subtitle: l10n.changePasswordSub,
                   onTap: () => context.push('/settings/change-password'),
                 ),
-                const Divider(height: 24, color: AppTheme.clayBorder),
-                _buildSettingsTile(
-                  icon: Icons.delete_sweep_rounded,
-                  iconBg: AppTheme.dangerRedLight,
-                  iconColor: AppTheme.dangerRed,
-                  title: l10n.clearChatHistoryTitle,
-                  subtitle: l10n.clearChatHistorySub,
-                  onTap: _deleteAllHistory,
-                ),
+                if (isStudent) ...[
+                  const Divider(height: 24, color: AppTheme.clayBorder),
+                  _buildSettingsTile(
+                    icon: Icons.delete_sweep_rounded,
+                    iconBg: AppTheme.dangerRedLight,
+                    iconColor: AppTheme.dangerRed,
+                    title: l10n.clearChatHistoryTitle,
+                    subtitle: l10n.clearChatHistorySub,
+                    onTap: _deleteAllHistory,
+                  ),
+                ],
               ],
             ),
           ),

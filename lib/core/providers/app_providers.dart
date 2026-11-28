@@ -75,11 +75,21 @@ class CurrentProfileNotifier extends AsyncNotifier<UserProfile?> {
   Future<UserProfile?> build() async {
     final repo = ref.watch(authRepositoryProvider);
     final sub = repo.authStateChanges.listen((event) async {
-      if (event.event == AuthChangeEvent.signedIn ||
-          event.event == AuthChangeEvent.signedOut ||
-          event.event == AuthChangeEvent.userUpdated) {
-        final p = await repo.fetchCurrentProfile();
-        setProfile(p);
+      try {
+        if (event.event == AuthChangeEvent.signedOut) {
+          state = const AsyncData(null);
+          return;
+        }
+        if (event.event == AuthChangeEvent.signedIn ||
+            event.event == AuthChangeEvent.userUpdated) {
+          final p = await repo.fetchCurrentProfile();
+          // Avoid wiping an already-loaded profile with null during signUp race.
+          if (p != null || event.event == AuthChangeEvent.userUpdated) {
+            setProfile(p);
+          }
+        }
+      } catch (_) {
+        // Keep previous state intact if transient network error occurs.
       }
     });
     ref.onDispose(sub.cancel);
@@ -103,11 +113,14 @@ class CurrentProfileNotifier extends AsyncNotifier<UserProfile?> {
   }
 
   Future<UserProfile?> reload([String? explicitUid]) async {
-    state = const AsyncLoading();
     final repo = ref.read(authRepositoryProvider);
-    final profile = await repo.fetchCurrentProfile(explicitUid);
-    setProfile(profile);
-    return profile;
+    try {
+      final profile = await repo.fetchCurrentProfile(explicitUid);
+      setProfile(profile);
+      return profile;
+    } catch (_) {
+      return state.value;
+    }
   }
 
   Future<UserProfile?> refresh() => reload();

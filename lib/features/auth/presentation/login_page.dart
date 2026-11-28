@@ -159,8 +159,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             ),
           );
 
-          final destination =
-              profile.role == UserRole.teacher ? '/teacher' : '/student';
+          final destination = switch (profile.role) {
+            UserRole.admin => '/admin',
+            UserRole.teacher => '/teacher',
+            UserRole.student => '/student',
+          };
           context.go(destination);
         } else {
           setState(() {

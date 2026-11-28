@@ -10,9 +10,14 @@ import '../../../core/widgets/clay_widgets.dart';
 import '../../../core/widgets/user_avatar.dart';
 
 class TeacherStudentDetailPage extends ConsumerStatefulWidget {
-  const TeacherStudentDetailPage({super.key, required this.studentId});
+  const TeacherStudentDetailPage({
+    super.key,
+    required this.studentId,
+    this.courseId,
+  });
 
   final String studentId;
+  final String? courseId;
 
   @override
   ConsumerState<TeacherStudentDetailPage> createState() =>
@@ -31,7 +36,8 @@ class _TeacherStudentDetailPageState
 
   Future<(UserProfile?, List<TeacherStudentSessionDetail>)> _load() async {
     final repo = ref.read(teacherRepositoryProvider);
-    final teacherCourseId = ref.read(currentProfileProvider).value?.courseId;
+    final teacherCourseId =
+        widget.courseId ?? ref.read(currentProfileProvider).value?.courseId;
     final res = await Future.wait([
       repo.getStudentProfile(widget.studentId),
       repo.getStudentSessionsDetail(
@@ -203,14 +209,19 @@ class _TeacherStudentDetailPageState
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                s.localizedTopicTitle(lang),
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.textPrimary,
+                              Expanded(
+                                child: Text(
+                                  s.localizedTopicTitle(lang),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.textPrimary,
+                                  ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               ClayPill(
                                 label: l10n.understoodBadge(s.meterPercent),
                                 color: isCompleted ? AppTheme.successGreenLight : const Color(0xFFFFF7ED),

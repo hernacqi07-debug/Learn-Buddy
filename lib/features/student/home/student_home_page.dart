@@ -87,6 +87,12 @@ class _StudentHomePageState extends ConsumerState<StudentHomePage> {
   }
 
   Future<void> _startNewSessionDialog(TopicSummary topic) async {
+    if (topic.activeSessionId != null && topic.activeSessionId!.isNotEmpty) {
+      await context.push('/student/teach/${topic.activeSessionId}');
+      if (mounted) _reload();
+      return;
+    }
+
     final chosen = await showSessionLanguageDialog(context, ref, topic);
     if (chosen == null || !mounted) return;
 

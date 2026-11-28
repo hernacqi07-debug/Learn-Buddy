@@ -195,7 +195,9 @@ class _AnnouncementsPageState extends ConsumerState<AnnouncementsPage> {
                     radius: 12,
                     backgroundColor: AppTheme.primaryIndigo.withValues(alpha: 0.15),
                     child: Text(
-                      (item.teacherName ?? 'G')[0],
+                      (item.teacherName ?? '').trim().isNotEmpty
+                          ? item.teacherName!.trim()[0].toUpperCase()
+                          : 'G',
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,

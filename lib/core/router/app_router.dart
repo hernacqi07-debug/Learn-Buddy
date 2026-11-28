@@ -150,6 +150,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/teacher/student/:studentId',
         builder: (context, state) => TeacherStudentDetailPage(
           studentId: state.pathParameters['studentId']!,
+          courseId: state.uri.queryParameters['courseId'],
         ),
       ),
       GoRoute(

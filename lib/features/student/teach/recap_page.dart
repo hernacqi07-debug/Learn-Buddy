@@ -40,13 +40,28 @@ class _RecapPageState extends ConsumerState<RecapPage> {
     );
   }
 
+  bool _retrying = false;
+
   Future<void> _retryTopic(LearningSession session) async {
-    final newSession = await ref.read(sessionRepositoryProvider).startSession(
-          topicId: session.topicId,
-          language: session.language,
-        );
-    if (!mounted) return;
-    context.pushReplacement('/student/teach/${newSession.id}');
+    if (_retrying) return;
+    setState(() => _retrying = true);
+    try {
+      final newSession = await ref.read(sessionRepositoryProvider).startSession(
+            topicId: session.topicId,
+            language: session.language,
+          );
+      if (!mounted) return;
+      context.pushReplacement('/student/teach/${newSession.id}');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _retrying = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal memulai sesi baru: $e'),
+          backgroundColor: AppTheme.dangerRed,
+        ),
+      );
+    }
   }
 
   @override

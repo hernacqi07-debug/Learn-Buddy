@@ -127,7 +127,7 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                   const SizedBox(height: 10),
                   ClayTextField(
                     controller: passCtrl,
-                    hintText: isEn ? 'Password (min. 6 chars)' : 'Password (min. 6 karakter)',
+                    hintText: isEn ? 'Password (min. 8 chars)' : 'Password (min. 8 karakter)',
                     obscureText: true,
                     prefixIcon: Icons.lock_outline_rounded,
                   ),
@@ -215,11 +215,11 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
                     : () async {
                         if (nameCtrl.text.trim().isEmpty ||
                             emailCtrl.text.trim().isEmpty ||
-                            passCtrl.text.length < 6) {
+                            passCtrl.text.length < 8) {
                           _showSnack(
                             isEn
-                                ? 'Please fill name, email, and password (min 6 chars).'
-                                : 'Nama, email, dan password (min. 6 karakter) wajib diisi.',
+                                ? 'Please fill name, email, and password (min 8 chars).'
+                                : 'Nama, email, dan password (min. 8 karakter) wajib diisi.',
                             isError: true,
                           );
                           return;

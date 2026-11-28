@@ -106,6 +106,7 @@ class _QuizPageState extends ConsumerState<QuizPage> {
         answers: answerLog,
       );
 
+      if (!mounted) return;
       setState(() {
         _isSubmitted = true;
         _savedAttempt = attempt;
@@ -640,7 +641,11 @@ class _QuizPageState extends ConsumerState<QuizPage> {
                   if (!isCorrect) ...[
                     const SizedBox(height: 4),
                     Text(
-                      l10n.correctAnswerLabel(q.options[q.correctIndex]),
+                      l10n.correctAnswerLabel(
+                        q.correctIndex >= 0 && q.correctIndex < q.options.length
+                            ? q.options[q.correctIndex]
+                            : '-',
+                      ),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12.5,
                         color: AppTheme.successGreen,

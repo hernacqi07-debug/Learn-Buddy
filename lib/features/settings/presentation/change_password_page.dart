@@ -31,11 +31,16 @@ class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
 
   Future<void> _submitChangePassword() async {
     final l10n = context.l10n;
-    final newPass = _newPassController.text.trim();
-    final confirmPass = _confirmPassController.text.trim();
+    final newPass = _newPassController.text;
+    final confirmPass = _confirmPassController.text;
 
-    if (newPass.length < 6) {
-      setState(() => _errorMessage = l10n.passwordMin6Error);
+    if (newPass.length < 8) {
+      final isEn = ref.read(languageProvider).languageCode == 'en';
+      setState(
+        () => _errorMessage = isEn
+            ? 'Password must be at least 8 characters.'
+            : 'Kata sandi baru minimal 8 karakter.',
+      );
       return;
     }
     if (newPass != confirmPass) {

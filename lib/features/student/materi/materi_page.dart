@@ -20,7 +20,7 @@ class MateriPage extends ConsumerStatefulWidget {
 
 class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  late Future<TopicSummary?> _futureTopic;
+  late Future<(TopicSummary?, List<Course>)> _futureTopic;
   bool _isStartingSession = false;
 
   @override
@@ -32,7 +32,10 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
 
   void _loadTopic() {
     final repo = ref.read(sessionRepositoryProvider);
-    _futureTopic = repo.getTopicDetail(widget.topicId);
+    _futureTopic = Future.wait([
+      repo.getTopicDetail(widget.topicId),
+      repo.getCourses(),
+    ]).then((res) => (res[0] as TopicSummary?, res[1] as List<Course>));
   }
 
   @override
@@ -102,13 +105,14 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
           ),
         ],
       ),
-      body: FutureBuilder<TopicSummary?>(
+      body: FutureBuilder<(TopicSummary?, List<Course>)>(
         future: _futureTopic,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          final topic = snapshot.data;
+          final topic = snapshot.data?.$1;
+          final courses = snapshot.data?.$2 ?? const <Course>[];
           if (topic == null) {
             return Center(
               child: Text(
@@ -120,6 +124,12 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
               ),
             );
           }
+
+          final courseLabel = courses
+                  .where((c) => c.id == topic.courseId)
+                  .map((c) => c.localizedTitle(lang))
+                  .firstOrNull ??
+              l10n.basicDataStructuresBadge;
 
           return Column(
             children: [
@@ -133,13 +143,15 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
                     children: [
                       Row(
                         children: [
-                          ClayPill(
-                            label: l10n.basicDataStructuresBadge,
-                            color: AppTheme.primaryIndigoLight,
-                            textColor: AppTheme.primaryIndigo,
-                            icon: Icons.layers_rounded,
+                          Flexible(
+                            child: ClayPill(
+                              label: courseLabel,
+                              color: AppTheme.primaryIndigoLight,
+                              textColor: AppTheme.primaryIndigo,
+                              icon: Icons.layers_rounded,
+                            ),
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 8),
                           ClayPill(
                             label: l10n.readingTimeMinutes(topic.readingTimeMinutes),
                             color: const Color(0xFFFEF3C7),
@@ -254,14 +266,29 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
     );
   }
 
+  bool _isStackTopic(TopicSummary topic) =>
+      topic.titleId.toLowerCase().contains('stack');
+
+  String _codeFileName(TopicSummary topic) {
+    final t = topic.titleId.toLowerCase();
+    if (t.contains('stack')) return 'stack_implementation.dart';
+    if (t.contains('queue')) return 'queue_example.dart';
+    if (t.contains('linked')) return 'linked_list.dart';
+    if (t.contains('class') || t.contains('enkapsulasi') || t.contains('pewarisan')) {
+      return 'Main.java';
+    }
+    if (t.contains('list') || t.contains('dictionary') || t.contains('perulangan')) {
+      return 'main.py';
+    }
+    return 'example.code';
+  }
+
   Widget _buildTheoryTab(TopicSummary topic, bool isEn) {
     final l10n = context.l10n;
-    final defaultTheory = isEn
-        ? 'A Stack is a linear data structure that follows the LIFO (Last In, First Out) principle. The element added most recently is the first one to be removed.'
-        : 'Stack (Tumpukan) adalah struktur data linier yang mengikuti prinsip LIFO (Last In, First Out). Elemen yang paling terakhir ditambahkan akan menjadi elemen pertama yang dikeluarkan.';
-    final theory = (!isEn && topic.theoryContent != null)
-        ? topic.theoryContent!
-        : defaultTheory;
+    final hasTheory =
+        topic.theoryContent != null && topic.theoryContent!.trim().isNotEmpty;
+    final theory = hasTheory ? topic.theoryContent!.trim() : topic.localizedDesc(langOf(isEn));
+    final showStackExtras = _isStackTopic(topic);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -275,12 +302,16 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
                 children: [
                   const Icon(Icons.menu_book_rounded, color: AppTheme.primaryIndigo, size: 22),
                   const SizedBox(width: 10),
-                  Text(
-                    l10n.mainConceptTitle,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.textPrimary,
+                  Expanded(
+                    child: Text(
+                      showStackExtras
+                          ? l10n.mainConceptTitle
+                          : topic.localizedTitle(langOf(isEn)),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
                   ),
                 ],
@@ -297,69 +328,71 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        ClayCard(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.checklist_rounded, color: AppTheme.successGreen, size: 22),
-                  const SizedBox(width: 10),
-                  Text(
-                    l10n.coreOperationsTitle,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.textPrimary,
+        if (showStackExtras) ...[
+          const SizedBox(height: 16),
+          ClayCard(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.checklist_rounded, color: AppTheme.successGreen, size: 22),
+                    const SizedBox(width: 10),
+                    Text(
+                      l10n.coreOperationsTitle,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              _buildOpItem(
-                'PUSH(x)',
-                isEn
-                    ? 'Adds a new element to the top of the stack.'
-                    : 'Menambahkan elemen baru ke posisi paling atas (top).',
-                Icons.arrow_downward_rounded,
-              ),
-              const SizedBox(height: 10),
-              _buildOpItem(
-                'POP()',
-                isEn
-                    ? 'Removes and returns the element from the top of the stack.'
-                    : 'Mengambil dan menghapus elemen dari posisi paling atas.',
-                Icons.arrow_upward_rounded,
-              ),
-              const SizedBox(height: 10),
-              _buildOpItem(
-                'PEEK() / TOP()',
-                isEn
-                    ? 'Views the top element without removing it.'
-                    : 'Melihat elemen teratas tanpa menghapusnya.',
-                Icons.visibility_rounded,
-              ),
-              const SizedBox(height: 10),
-              _buildOpItem(
-                'isEmpty()',
-                isEn
-                    ? 'Checks whether the stack is currently empty.'
-                    : 'Mengecek apakah tumpukan sedang kosong.',
-                Icons.check_circle_outline_rounded,
-              ),
-              const SizedBox(height: 10),
-              _buildOpItem(
-                'isFull()',
-                isEn
-                    ? 'Checks whether the stack is full (capacity exceeded).'
-                    : 'Mengecek kondisi tumpukan penuh (kapasitas terlampaui).',
-                Icons.warning_amber_rounded,
-              ),
-            ],
+                  ],
+                ),
+                const SizedBox(height: 14),
+                _buildOpItem(
+                  'PUSH(x)',
+                  isEn
+                      ? 'Adds a new element to the top of the stack.'
+                      : 'Menambahkan elemen baru ke posisi paling atas (top).',
+                  Icons.arrow_downward_rounded,
+                ),
+                const SizedBox(height: 10),
+                _buildOpItem(
+                  'POP()',
+                  isEn
+                      ? 'Removes and returns the element from the top of the stack.'
+                      : 'Mengambil dan menghapus elemen dari posisi paling atas.',
+                  Icons.arrow_upward_rounded,
+                ),
+                const SizedBox(height: 10),
+                _buildOpItem(
+                  'PEEK() / TOP()',
+                  isEn
+                      ? 'Views the top element without removing it.'
+                      : 'Melihat elemen teratas tanpa menghapusnya.',
+                  Icons.visibility_rounded,
+                ),
+                const SizedBox(height: 10),
+                _buildOpItem(
+                  'isEmpty()',
+                  isEn
+                      ? 'Checks whether the stack is currently empty.'
+                      : 'Mengecek apakah tumpukan sedang kosong.',
+                  Icons.check_circle_outline_rounded,
+                ),
+                const SizedBox(height: 10),
+                _buildOpItem(
+                  'isFull()',
+                  isEn
+                      ? 'Checks whether the stack is full (capacity exceeded).'
+                      : 'Mengecek kondisi tumpukan penuh (kapasitas terlampaui).',
+                  Icons.warning_amber_rounded,
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -414,14 +447,18 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
     );
   }
 
+  String langOf(bool isEn) => isEn ? 'en' : 'id';
+
   Widget _buildAnalogyTab(TopicSummary topic, bool isEn) {
     final l10n = context.l10n;
-    final defaultAnalogy = isEn
-        ? 'Imagine a stack of clean plates at a cafeteria counter. The plate washed first and placed at the bottom will be the last one picked up (LIFO).'
-        : 'Bayangkan tumpukan piring bersih di meja prasmanan kantin sekolah. Piring yang pertama kali dicuci dan ditaruh di bawah akan menjadi yang terakhir diambil (LIFO).';
-    final analogy = (!isEn && topic.analogyContent != null)
-        ? topic.analogyContent!
-        : defaultAnalogy;
+    final showStackExtras = _isStackTopic(topic);
+    final hasAnalogy =
+        topic.analogyContent != null && topic.analogyContent!.trim().isNotEmpty;
+    final analogy = hasAnalogy
+        ? topic.analogyContent!.trim()
+        : (isEn
+            ? 'Think of a real-world situation where "${topic.localizedTitle('en')}" helps organize or solve a problem step by step. Try explaining it in your own words to Buddy!'
+            : 'Bayangkan contoh di kehidupan sehari-hari yang menggambarkan konsep "${topic.localizedTitle('id')}". Coba jelaskan dengan bahasamu sendiri kepada Buddy!');
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -459,80 +496,64 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        ClayCard(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.realAppsExamplesTitle,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.textPrimary,
+        if (showStackExtras) ...[
+          const SizedBox(height: 16),
+          ClayCard(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.realAppsExamplesTitle,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              _buildOpItem(
-                isEn ? 'Undo / Redo Feature (Ctrl+Z)' : 'Fitur Undo / Redo (Ctrl+Z)',
-                isEn
-                    ? 'Every keystroke is pushed to a Stack. Pressing Ctrl+Z pops the last operation.'
-                    : 'Setiap ketikan disimpan ke Stack. Ketika Ctrl+Z ditekan, operasi terakhir di-POP.',
-                Icons.undo_rounded,
-              ),
-              const SizedBox(height: 10),
-              _buildOpItem(
-                isEn ? 'Web Browser Back Button' : 'Tombol Back pada Web Browser',
-                isEn
-                    ? 'Visited URLs are stacked onto the browser navigation history.'
-                    : 'Riwayat URL ditumpuk ke Stack history navigasi browser.',
-                Icons.arrow_back_rounded,
-              ),
-              const SizedBox(height: 10),
-              _buildOpItem(
-                isEn ? 'Function Call Stack' : 'Call Stack Pemanggilan Fungsi',
-                isEn
-                    ? 'When a recursive function is called, memory addresses are stored in the system Call Stack.'
-                    : 'Ketika fungsi rekursif dipanggil, alamat memori disimpan di Call Stack sistem.',
-                Icons.call_split_rounded,
-              ),
-            ],
+                const SizedBox(height: 12),
+                _buildOpItem(
+                  isEn ? 'Undo / Redo Feature (Ctrl+Z)' : 'Fitur Undo / Redo (Ctrl+Z)',
+                  isEn
+                      ? 'Every keystroke is pushed to a Stack. Pressing Ctrl+Z pops the last operation.'
+                      : 'Setiap ketikan disimpan ke Stack. Ketika Ctrl+Z ditekan, operasi terakhir di-POP.',
+                  Icons.undo_rounded,
+                ),
+                const SizedBox(height: 10),
+                _buildOpItem(
+                  isEn ? 'Web Browser Back Button' : 'Tombol Back pada Web Browser',
+                  isEn
+                      ? 'Visited URLs are stacked onto the browser navigation history.'
+                      : 'Riwayat URL ditumpuk ke Stack history navigasi browser.',
+                  Icons.arrow_back_rounded,
+                ),
+                const SizedBox(height: 10),
+                _buildOpItem(
+                  isEn ? 'Function Call Stack' : 'Call Stack Pemanggilan Fungsi',
+                  isEn
+                      ? 'When a recursive function is called, memory addresses are stored in the system Call Stack.'
+                      : 'Ketika fungsi rekursif dipanggil, alamat memori disimpan di Call Stack sistem.',
+                  Icons.call_split_rounded,
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
 
   Widget _buildCodeTab(TopicSummary topic, String codeCopiedMsg) {
-    final code = topic.codeSnippet ??
-'''class Stack<T> {
-  final List<T> _items = [];
-
-  void push(T value) {
-    _items.add(value);
-  }
-
-  T pop() {
-    if (isEmpty) throw Exception("Stack Kosong (Underflow)!");
-    return _items.removeLast();
-  }
-
-  T peek() {
-    if (isEmpty) throw Exception("Stack Kosong!");
-    return _items.last;
-  }
-
-  bool get isEmpty => _items.isEmpty;
-  int get length => _items.length;
-}''';
+    final code = (topic.codeSnippet != null && topic.codeSnippet!.trim().isNotEmpty)
+        ? topic.codeSnippet!.trim()
+        : '// Contoh kode untuk topik "${topic.titleId}" belum tersedia.';
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         ClayCard(
           padding: const EdgeInsets.all(16),
-          color: const Color(0xFF0F172A), // Dark code container for maximum syntax clarity
+          color: const Color(0xFF0F172A),
           borderColor: const Color(0xFF334155),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -549,7 +570,7 @@ class _MateriPageState extends ConsumerState<MateriPage> with SingleTickerProvid
                       Container(width: 10, height: 10, decoration: const BoxDecoration(color: Color(0xFF10B981), shape: BoxShape.circle)),
                       const SizedBox(width: 12),
                       Text(
-                        'stack_implementation.dart',
+                        _codeFileName(topic),
                         style: GoogleFonts.jetBrainsMono(
                           color: const Color(0xFF94A3B8),
                           fontSize: 12,

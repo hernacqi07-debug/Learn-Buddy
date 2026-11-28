@@ -30,10 +30,11 @@ class StudentBottomNav extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(currentProfileProvider).value;
-    if (profile != null && profile.role != UserRole.student) {
+    if (profile == null || profile.role != UserRole.student) {
       return const SizedBox.shrink();
     }
     final l10n = context.l10n;
+    final currentLocation = GoRouterState.of(context).matchedLocation;
 
     return Container(
       decoration: const BoxDecoration(
@@ -54,7 +55,9 @@ class StudentBottomNav extends ConsumerWidget {
                 label: l10n.navChat,
                 active: currentIndex == 0,
                 onTap: () {
-                  if (currentIndex != 0) context.go('/student/chat');
+                  if (currentIndex != 0 || currentLocation != '/student/chat') {
+                    context.go('/student/chat');
+                  }
                 },
               ),
               _NavItem(
@@ -62,7 +65,9 @@ class StudentBottomNav extends ConsumerWidget {
                 label: l10n.navHome,
                 active: currentIndex == 1,
                 onTap: () {
-                  if (currentIndex != 1) context.go('/student');
+                  if (currentIndex != 1 || currentLocation != '/student') {
+                    context.go('/student');
+                  }
                 },
               ),
               _NavItem(
@@ -70,7 +75,9 @@ class StudentBottomNav extends ConsumerWidget {
                 label: l10n.navSettings,
                 active: currentIndex == 2,
                 onTap: () {
-                  if (currentIndex != 2) context.go('/settings');
+                  if (currentIndex != 2 || currentLocation != '/settings') {
+                    context.go('/settings');
+                  }
                 },
               ),
             ],

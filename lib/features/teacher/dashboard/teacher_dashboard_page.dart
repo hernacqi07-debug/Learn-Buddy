@@ -27,9 +27,12 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
     _future = _load();
   }
 
+  String? _assignedCourseTitle;
+
   Future<(List<Course>, List<TeacherStudentSummary>, List<TeacherTopic>)> _load() async {
     final repo = ref.read(teacherRepositoryProvider);
-    final myProfile = ref.read(currentProfileProvider).value;
+    final myProfile = ref.read(currentProfileProvider).value ??
+        await ref.read(currentProfileProvider.future);
 
     final courses = await repo.getCourses();
 
@@ -42,6 +45,14 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
         orElse: () => courses.first,
       );
       _selectedCourseId = myCourse.id;
+    }
+
+    final activeCourse = courses
+        .where((c) => c.id == _selectedCourseId)
+        .firstOrNull;
+    if (activeCourse != null && mounted) {
+      final lang = ref.read(languageProvider).languageCode;
+      setState(() => _assignedCourseTitle = activeCourse.localizedTitle(lang));
     }
 
     final res = await Future.wait([
@@ -131,12 +142,82 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                   ],
                 ),
                 const SizedBox(height: 14),
-                Text(
-                  l10n.dueDateLabel('${selectedDate.day}/${selectedDate.month}/${selectedDate.year}'),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textSecondary,
+                if (topics.isNotEmpty) ...[
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedTopicId,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: 'Topik Terkait',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    items: topics
+                        .map(
+                          (t) => DropdownMenuItem<String>(
+                            value: t.id,
+                            child: Text(
+                              t.titleId,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: isSaving
+                        ? null
+                        : (v) => setDialogState(() => selectedTopicId = v),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: isSaving
+                      ? null
+                      : () async {
+                          final picked = await showDatePicker(
+                            context: ctx,
+                            initialDate: selectedDate,
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime.now().add(const Duration(days: 365)),
+                          );
+                          if (picked != null && ctx.mounted) {
+                            setDialogState(() => selectedDate = picked);
+                          }
+                        },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.clayCanvas,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.clayBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.calendar_today_rounded,
+                          size: 16,
+                          color: AppTheme.primaryIndigo,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            l10n.dueDateLabel(
+                              '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                            ),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.edit_calendar_rounded,
+                          size: 16,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -157,7 +238,15 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
               onPressed: () async {
                 final t = titleCtrl.text.trim();
                 final d = descCtrl.text.trim();
-                if (t.isEmpty || d.isEmpty) return;
+                if (t.isEmpty || d.isEmpty) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('Judul dan deskripsi tugas wajib diisi.'),
+                      backgroundColor: AppTheme.accentOrange,
+                    ),
+                  );
+                  return;
+                }
 
                 setDialogState(() => isSaving = true);
                 try {
@@ -230,7 +319,13 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                     ),
                   ),
                   Text(
-                    l10n.teacherPanelSub,
+                    _assignedCourseTitle != null
+                        ? (ref.watch(languageProvider).languageCode == 'en'
+                            ? 'Teacher Panel · $_assignedCourseTitle'
+                            : 'Panel Guru · $_assignedCourseTitle')
+                        : l10n.teacherPanelSub,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -508,14 +603,17 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                 const SizedBox(height: 10),
 
                 // Filter Chips
-                Row(
-                  children: [
-                    _buildFilterChip(l10n.filterAll(totalStudents), 'all'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(l10n.filterRemedial(strugglingCount), 'struggling'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(l10n.filterMastered(completedCount), 'completed'),
-                  ],
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip(l10n.filterAll(totalStudents), 'all'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(l10n.filterRemedial(strugglingCount), 'struggling'),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(l10n.filterMastered(completedCount), 'completed'),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 14),
 
@@ -538,7 +636,10 @@ class _TeacherDashboardPageState extends ConsumerState<TeacherDashboardPage> {
                         child: ClayCard(
                           padding: const EdgeInsets.all(16),
                           onTap: () {
-                            context.push('/teacher/student/${student.studentId}');
+                            final q = _selectedCourseId != null
+                                ? '?courseId=$_selectedCourseId'
+                                : '';
+                            context.push('/teacher/student/${student.studentId}$q');
                           },
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,

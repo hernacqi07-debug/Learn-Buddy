@@ -542,8 +542,11 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               ClayPill(
                 label: '${spec.badgeTitle} • ${_items.length}',
@@ -551,26 +554,25 @@ class _ArPageState extends ConsumerState<ArPage> with WidgetsBindingObserver {
                 textColor: AppTheme.primaryIndigo,
               ),
               if (spec.presets.isNotEmpty)
-                Row(
+                Wrap(
+                  spacing: 5,
+                  runSpacing: 4,
                   children: spec.presets.map((preset) {
-                    return Padding(
-                      padding: const EdgeInsets.only(left: 5),
-                      child: GestureDetector(
-                        onTap: () => _inputCtrl.text = preset,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppTheme.clayCanvas,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppTheme.clayBorder),
-                          ),
-                          child: Text(
-                            preset,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.textSecondary,
-                            ),
+                    return GestureDetector(
+                      onTap: () => _inputCtrl.text = preset,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.clayCanvas,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.clayBorder),
+                        ),
+                        child: Text(
+                          preset,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textSecondary,
                           ),
                         ),
                       ),

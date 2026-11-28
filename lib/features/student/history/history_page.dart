@@ -134,8 +134,9 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
       statusText = l10n.sessionIncomplete;
     }
 
+    final localStarted = session.startedAt.toLocal();
     final formattedDate =
-        '${session.startedAt.day}/${session.startedAt.month}/${session.startedAt.year} · ${session.startedAt.hour.toString().padLeft(2, '0')}:${session.startedAt.minute.toString().padLeft(2, '0')} WIB';
+        '${localStarted.day}/${localStarted.month}/${localStarted.year} · ${localStarted.hour.toString().padLeft(2, '0')}:${localStarted.minute.toString().padLeft(2, '0')} WIB';
 
     return ClayCard(
       padding: const EdgeInsets.all(18),
@@ -226,8 +227,9 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                 ClayButton(
                   text: l10n.continueSession,
                   height: 40,
-                  onPressed: () {
-                    context.push('/student/teach/${session.id}');
+                  onPressed: () async {
+                    await context.push('/student/teach/${session.id}');
+                    if (mounted) _fetch();
                   },
                 )
               else

@@ -45,6 +45,47 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
     });
   }
 
+  Future<bool> _confirmDeleteDialog(String title, String message) async {
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.dangerRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.delete),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
+  Future<void> _runGuardedAction(Future<void> Function() action) async {
+    try {
+      await action();
+      _reload();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal memproses aksi: $e'),
+          backgroundColor: AppTheme.dangerRed,
+        ),
+      );
+    }
+  }
+
   Future<void> _showTopicDialog({TeacherTopic? existing}) async {
     final l10n = context.l10n;
     final titleIdCtrl = TextEditingController(text: existing?.titleId ?? '');
@@ -525,12 +566,11 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
                     children: [
                       Switch(
                         value: topic.isActive,
-                        onChanged: (v) async {
-                          await ref
+                        onChanged: (v) => _runGuardedAction(
+                          () => ref
                               .read(teacherRepositoryProvider)
-                              .toggleTopicActive(topic.id, v);
-                          _reload();
-                        },
+                              .toggleTopicActive(topic.id, v),
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),
@@ -556,10 +596,16 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(
                           onPressed: () async {
-                            await ref
-                                .read(teacherRepositoryProvider)
-                                .deleteTopicIfUnused(topic.id);
-                            _reload();
+                            final ok = await _confirmDeleteDialog(
+                              'Hapus Topik?',
+                              'Yakin ingin menghapus topik "${topic.titleId}" beserta seluruh miskonsepsi dan kriterianya?',
+                            );
+                            if (!ok) return;
+                            await _runGuardedAction(
+                              () => ref
+                                  .read(teacherRepositoryProvider)
+                                  .deleteTopicIfUnused(topic.id),
+                            );
                           },
                           icon: const Icon(
                             Icons.delete_outline,
@@ -607,10 +653,16 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
                                     color: AppTheme.dangerRed,
                                   ),
                                   onPressed: () async {
-                                    await ref
-                                        .read(teacherRepositoryProvider)
-                                        .deleteMisconception(m.id);
-                                    _reload();
+                                    final ok = await _confirmDeleteDialog(
+                                      'Hapus Miskonsepsi?',
+                                      'Yakin ingin menghapus miskonsepsi ini beserta seluruh kriterianya?',
+                                    );
+                                    if (!ok) return;
+                                    await _runGuardedAction(
+                                      () => ref
+                                          .read(teacherRepositoryProvider)
+                                          .deleteMisconception(m.id),
+                                    );
                                   },
                                 ),
                               ],
@@ -646,10 +698,16 @@ class _TeacherContentPageState extends ConsumerState<TeacherContentPage> {
                                         color: AppTheme.dangerRed,
                                       ),
                                       onPressed: () async {
-                                        await ref
-                                            .read(teacherRepositoryProvider)
-                                            .deleteCriterion(c.id);
-                                        _reload();
+                                        final ok = await _confirmDeleteDialog(
+                                          'Hapus Kriteria?',
+                                          'Yakin ingin menghapus kriteria penilaian ini?',
+                                        );
+                                        if (!ok) return;
+                                        await _runGuardedAction(
+                                          () => ref
+                                              .read(teacherRepositoryProvider)
+                                              .deleteCriterion(c.id),
+                                        );
                                       },
                                     ),
                                   ],
